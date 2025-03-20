@@ -7,6 +7,6 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="CodeEditor2AiPlugin.Views.MainWindow"
         Icon="/Assets/avalonia-logo.ico"
-        Title="CodeEditor2AiPlugin">
-        <views:MainView />
+        Title="ChatTest">
+        <views:ChatControl />
 </Window>

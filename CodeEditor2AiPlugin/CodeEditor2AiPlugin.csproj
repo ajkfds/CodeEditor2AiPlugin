@@ -23,4 +23,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\CodeEditor2Plugin\CodeEditor2Plugin\CodeEditor2Plugin\CodeEditor2Plugin.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Views\ChatControl.axaml.cs">
+      <DependentUpon>ChatControl.axaml</DependentUpon>
+    </Compile>
+  </ItemGroup>
 </Project>
