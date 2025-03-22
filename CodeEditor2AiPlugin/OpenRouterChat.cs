@@ -6,10 +6,14 @@ using System.Text;
 using System.Threading.Tasks;
 using System.ClientModel;
 using OpenAI.Chat;
+using System.Threading;
+using System.Runtime.CompilerServices;
+using Svg;
+using Avalonia.Threading;
 
 namespace CodeEditor2AiPlugin
 {
-    public class OpenRouterChat
+    public class OpenRouterChat: ILLMChat
     {
         public OpenRouterChat()
         {
@@ -30,10 +34,13 @@ namespace CodeEditor2AiPlugin
         private string apiKey;
         private OpenAI.Chat.ChatClient client;
 
-        public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command)
+        public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
+            List<ChatMessage> chatMessages = new List<ChatMessage>();
+            chatMessages.Add(ChatMessage.CreateUserMessage(command));
+
             AsyncCollectionResult<StreamingChatCompletionUpdate> completionUpdates
-                = client.CompleteChatStreamingAsync(command);
+                = client.CompleteChatStreamingAsync(chatMessages, null, cancellationToken);
 
             await foreach (StreamingChatCompletionUpdate completionUpdate in completionUpdates)
             {
@@ -42,6 +49,16 @@ namespace CodeEditor2AiPlugin
                     yield return completionUpdate.ContentUpdate[0].Text;
                 }
             }
+        }
+
+        public async Task<string> GetAsyncChatResult(string command,CancellationToken cancellationToken)
+        {
+            StringBuilder sb = new StringBuilder();
+            await foreach (string ret in GetAsyncCollectionChatResult(command, cancellationToken))
+            {
+                sb.Append(ret);
+            }
+            return sb.ToString();
         }
 
     }

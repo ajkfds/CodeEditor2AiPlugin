@@ -2,11 +2,16 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
+using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using ReactiveUI;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using static CodeEditor2AiPlugin.Views.ChatControl;
@@ -14,7 +19,7 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace CodeEditor2AiPlugin.Views;
 
-public partial class ChatControl : UserControl
+public partial class ChatControl : UserControl,ILLMChat
 {
     public ObservableCollection<ChatItem> Items { get; set; } = new ObservableCollection<ChatItem>();
     public ChatControl()
@@ -25,23 +30,51 @@ public partial class ChatControl : UserControl
         Items.Add(new TextItem("DeepSeek-R1\n"));
         Items.Add( inputItem );
         
-        inputItem.TextBox.KeyDown += TextBox_KeyDown;
+        inputItem.TextBox.TextChanged += TextBox_TextChanged;
+        var keyBinding = new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.Enter, KeyModifiers.Control), // Ctrl+Enter
+            Command = ReactiveCommand.Create(() => {
+                enterCommand();
+            }),
+        };
+        inputItem.TextBox.KeyBindings.Add(keyBinding);
     }
+
+
+    private void TextBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (sender is not TextBox textBox) return;
+        if (textBox.Text == null) return;
+
+        var lineCount = textBox.Text.Split(Environment.NewLine).Length;
+        textBox.Height = lineCount * this.FontSize * 1.5 + 10;
+    }
+
     OpenRouterChat chat = new OpenRouterChat();
     InputItem inputItem = new InputItem();
+    TextItem? lastResultItem = null;
 
     private Avalonia.Media.Color commandColor = new Avalonia.Media.Color(255, 255, 200, 200);
     private Avalonia.Media.Color completeColor = new Avalonia.Media.Color(255, 200, 255, 255);
 
     bool inputAcceptable = true;
-    private async void TextBox_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+
+    private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
+
+    private void enterCommand()
     {
-        if (e.Key != Avalonia.Input.Key.Enter) return;
+        _= Complete(cancellationTokenSource.Token);
+    }
+
+    private async Task Complete(CancellationToken cancellation)
+    {
         if (!inputAcceptable) return;
         inputAcceptable = false;
 
         string? command = inputItem.TextBox.Text;
-        if(command==null) return;
+        if (command == null) return;
 
         TextItem commandItem = new TextItem(command);
         inputItem.TextBox.Text = "";
@@ -50,7 +83,8 @@ public partial class ChatControl : UserControl
 
         TextItem resultItem = new TextItem("");
         Items.Insert(Items.Count - 1, resultItem);
-        
+        lastResultItem = resultItem;
+
         // progress
         var stopwatch = Stopwatch.StartNew();
 
@@ -61,7 +95,7 @@ public partial class ChatControl : UserControl
             {
                 try
                 {
-                    await resultItem.SetText("waiting ... " + (stopwatch.ElapsedMilliseconds/1000f).ToString("F1") + "s");
+                    await resultItem.SetText("waiting ... " + (stopwatch.ElapsedMilliseconds / 1000f).ToString("F1") + "s");
                     await Task.Delay(100, cts.Token);
                 }
                 catch (TaskCanceledException)
@@ -73,9 +107,9 @@ public partial class ChatControl : UserControl
 
         bool timerActivate = true;
 
-        await foreach (string ret in chat.GetAsyncCollectionChatResult(command))
+        await foreach (string ret in chat.GetAsyncCollectionChatResult(command, cancellation))
         {
-            if (timerActivate & ret !="")
+            if (timerActivate & ret != "")
             {
                 cts.Cancel();
                 await resultItem.SetText("");
@@ -98,6 +132,23 @@ public partial class ChatControl : UserControl
         inputAcceptable = true;
     }
 
+    public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, [EnumeratorCancellation] CancellationToken cancellation)
+    {
+        inputItem.TextBox.Text = command;
+        await Complete(cancellation);
+        if(lastResultItem == null) yield break;
+        yield return lastResultItem.Text;
+    }
+    public async Task<string> GetAsyncChatResult(string command, CancellationToken cancellationToken)
+    {
+        StringBuilder sb = new StringBuilder();
+        await foreach (string ret in GetAsyncCollectionChatResult(command, cancellationToken))
+        {
+            sb.Append(ret);
+        }
+        return sb.ToString();
+    }
+    // chat display items
     public class ChatItem : ListBoxItem
     {
     }
@@ -157,6 +208,15 @@ public partial class ChatControl : UserControl
                 textBlock.Text = text;
             });
         }
+
+        public string Text
+        {
+            get
+            {
+                if(textBlock.Text == null) return "";   
+                return textBlock.Text;
+            }
+        }
         public async Task AppendText(string text)
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
@@ -174,7 +234,13 @@ public partial class ChatControl : UserControl
             TextBox.TextWrapping = Avalonia.Media.TextWrapping.Wrap;
         }
 
-        public TextBox TextBox = new TextBox();
+        public TextBox TextBox = new TextBox()
+        {
+            Margin = new Thickness(10, 5, 10, 5),
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+            AcceptsReturn = true
+        };
     }
 }
 
