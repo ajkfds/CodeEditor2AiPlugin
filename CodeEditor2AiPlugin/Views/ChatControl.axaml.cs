@@ -46,12 +46,22 @@ public partial class ChatControl : UserControl,ILLMChat
         inputItem.TextBox.KeyBindings.Add(keyBinding);
         inputItem.SendButton.Click += SendButton_Click;
         inputItem.SaveButton.Click += SaveButton_Click;
+        inputItem.ClearButton.Click += ClearButton_Click;
+        inputItem.LoadButton.Click += LoadButton_Click;
 
         inputItem.TextBox.Focus();
     }
 
-    private IBrush textboxBorderBrush;
-    private IBrush textboxSelectedBorderBrush;
+    private void LoadButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        chat.LoadMessages("temp");
+    }
+
+    private void ClearButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        chat.ClearChat();
+    }
+
     private void SaveButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         chat.SaveMessages("temp");
@@ -258,6 +268,7 @@ public partial class ChatControl : UserControl,ILLMChat
             StackPanel.Children.Add(ButtonBar);
             {
                 ButtonBar.Children.Add(ClearButton);
+                ButtonBar.Children.Add(LoadButton);
                 ButtonBar.Children.Add(SaveButton);
                 ButtonBar.Children.Add(SendButton);
             }

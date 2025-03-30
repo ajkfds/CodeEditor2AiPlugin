@@ -11,6 +11,9 @@ using System.Runtime.CompilerServices;
 using Svg;
 using Avalonia.Threading;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.ClientModel.Primitives;
+using System.IO;
 
 namespace CodeEditor2AiPlugin
 {
@@ -44,13 +47,16 @@ namespace CodeEditor2AiPlugin
             AsyncCollectionResult<StreamingChatCompletionUpdate> completionUpdates
                 = client.CompleteChatStreamingAsync(chatMessages, null, cancellationToken);
 
+            StringBuilder sb = new StringBuilder();
             await foreach (StreamingChatCompletionUpdate completionUpdate in completionUpdates)
             {
                 if (completionUpdate.ContentUpdate.Count > 0)
                 {
+                    sb.Append(completionUpdate.ContentUpdate[0].Text);
                     yield return completionUpdate.ContentUpdate[0].Text;
                 }
             }
+            chatMessages.Add(ChatMessage.CreateAssistantMessage(sb.ToString()));
         }
 
         public async Task<string> GetAsyncChatResult(string command,CancellationToken cancellationToken)
@@ -60,7 +66,6 @@ namespace CodeEditor2AiPlugin
             {
                 sb.Append(ret);
             }
-            chatMessages.Add(ChatMessage.CreateAssistantMessage(sb.ToString()));
             return sb.ToString();
         }
 
@@ -68,8 +73,11 @@ namespace CodeEditor2AiPlugin
         {
             try
             {
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                System.IO.File.WriteAllText(filePath, JsonSerializer.Serialize(chatMessages, options));
+                BinaryData serializedData = SerializeMessages(chatMessages);
+                using (System.IO.StreamWriter sw = new System.IO.StreamWriter(filePath))
+                {
+                    sw.Write(serializedData);
+                }
             }
             catch (Exception ex)
             {
@@ -77,16 +85,15 @@ namespace CodeEditor2AiPlugin
             }
         }
 
+
         public void LoadMessages(string filePath)
         {
             try
-            {
-                if (!System.IO.File.Exists(filePath)) return;
-
-                var json = System.IO.File.ReadAllText(filePath);
-                List<ChatMessage>? messages = JsonSerializer.Deserialize<List<ChatMessage>>(json);
-                if(messages == null) return;
-                chatMessages = messages;
+            { 
+                using(System.IO.StreamReader sr = new System.IO.StreamReader(filePath))
+                {
+                    chatMessages = DeserializeMessages(BinaryData.FromString(sr.ReadToEnd())).ToList();
+                }
             }
             catch (Exception ex)
             {
@@ -94,10 +101,35 @@ namespace CodeEditor2AiPlugin
             }
         }
 
+        public static IEnumerable<ChatMessage> DeserializeMessages(BinaryData data)
+        {
+            using JsonDocument messagesAsJson = JsonDocument.Parse(data.ToMemory());
+
+            foreach (JsonElement jsonElement in messagesAsJson.RootElement.EnumerateArray())
+            {
+                yield return ModelReaderWriter.Read<ChatMessage>(BinaryData.FromObjectAsJson(jsonElement), ModelReaderWriterOptions.Json);
+            }
+        }
+        public static BinaryData SerializeMessages(IEnumerable<ChatMessage> messages)
+        {
+            using MemoryStream stream = new();
+            using Utf8JsonWriter writer = new(stream);
+
+            writer.WriteStartArray();
+
+            foreach (IJsonModel<ChatMessage> message in messages)
+            {
+                message.Write(writer, ModelReaderWriterOptions.Json);
+            }
+
+            writer.WriteEndArray();
+            writer.Flush();
+
+            return BinaryData.FromBytes(stream.ToArray());
+        }
         public void ClearChat()
         {
             chatMessages.Clear();
         }
-
     }
 }
