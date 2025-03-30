@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using ReactiveUI;
 using System;
@@ -29,8 +30,13 @@ public partial class ChatControl : UserControl,ILLMChat
         DataContext = this;
         InitializeComponent();
 
+        if (Design.IsDesignMode)
+        {
+            return;
+        }
         Items.Add(new TextItem("DeepSeek-R1\n"));
         Items.Add( inputItem );
+
 
 
         inputItem.TextBox.TextChanged += TextBox_TextChanged;
@@ -186,25 +192,29 @@ public partial class ChatControl : UserControl,ILLMChat
 
     public class TextItem : ChatItem
     {
-        private TextBlock textBlock;
+        private TextBox textBox = new TextBox()
+        {
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            Margin = new Thickness(10, 5, 10, 5),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+            AcceptsReturn = true,
+            IsReadOnly = true
+        };
+
         public TextItem(string text,Avalonia.Media.Color textColor): this(text)
         {
             TextColor = textColor;
         }
         public TextItem(string text)
         {
-            textBlock = new TextBlock()
-            {
-                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                Margin = new Thickness(10, 5, 10, 5)
-            };
-            textBlock.Text = text;
-            Content = textBlock;
-            textBlock.PointerEntered += (sender, e) =>
+            textBox.Text = text;
+            Content = textBox;
+
+            textBox.PointerEntered += (sender, e) =>
             {
                 Background = new Avalonia.Media.SolidColorBrush(new Avalonia.Media.Color(50, 0, 0, 100));
             };
-            textBlock.PointerExited += (sender, e) =>
+            textBox.PointerExited += (sender, e) =>
             {
                 Background = Avalonia.Media.Brushes.Transparent;
             };
@@ -215,28 +225,31 @@ public partial class ChatControl : UserControl,ILLMChat
                 {
                     Header = "Copy"
                 };
-                menuItem.Click += (sender, e) => {
+                menuItem.Click += (sender, e) =>
+                {
                     var top = TopLevel.GetTopLevel(this);
-                    top?.Clipboard?.SetTextAsync(textBlock.Text);
+                    top?.Clipboard?.SetTextAsync(textBox.Text);
                 };
                 contextMenu.Items.Add(menuItem);
             }
 
-            textBlock.ContextMenu = contextMenu;
+            textBox.ContextMenu = contextMenu;
+            textBox.BorderBrush = new Avalonia.Media.SolidColorBrush(new Avalonia.Media.Color(255, 10, 10, 10));
         }
+
 
         public Avalonia.Media.Color TextColor
         {
             set
             {
-                textBlock.Foreground = new Avalonia.Media.SolidColorBrush(value);
+                textBox.Foreground = new Avalonia.Media.SolidColorBrush(value);
             }
         }
         public async Task SetText(string text)
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                textBlock.Text = text;
+                textBox.Text = text;
             });
         }
 
@@ -244,18 +257,19 @@ public partial class ChatControl : UserControl,ILLMChat
         {
             get
             {
-                if(textBlock.Text == null) return "";   
-                return textBlock.Text;
+                if(textBox.Text == null) return "";   
+                return textBox.Text;
             }
         }
         public async Task AppendText(string text)
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                textBlock.Text += text;
+                textBox.Text += text;
             });
         }
     }
+
     public class InputItem : ChatItem
     {
         public InputItem()
