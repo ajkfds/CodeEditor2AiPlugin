@@ -4,6 +4,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
+using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Media;
 using Avalonia.Threading;
 using ReactiveUI;
 using System;
@@ -29,24 +31,44 @@ public partial class ChatControl : UserControl,ILLMChat
 
         Items.Add(new TextItem("DeepSeek-R1\n"));
         Items.Add( inputItem );
-        
+
+
         inputItem.TextBox.TextChanged += TextBox_TextChanged;
         var keyBinding = new KeyBinding
         {
-            Gesture = new KeyGesture(Key.Enter, KeyModifiers.Control), // Ctrl+Enter
-            Command = ReactiveCommand.Create(() => {
-                enterCommand();
+            Gesture = new KeyGesture(Key.Enter, KeyModifiers.None ),
+            Command = ReactiveCommand.Create(() =>
+            {
+                inputItem.SendButton.Focus();
+//                enterCommand();
             }),
         };
         inputItem.TextBox.KeyBindings.Add(keyBinding);
+        inputItem.SendButton.Click += SendButton_Click;
+        inputItem.SaveButton.Click += SaveButton_Click;
+
+        inputItem.TextBox.Focus();
     }
 
+    private IBrush textboxBorderBrush;
+    private IBrush textboxSelectedBorderBrush;
+    private void SaveButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        chat.SaveMessages("temp");
+    }
+
+    private void SendButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        _ = Complete(cancellationTokenSource.Token);
+        inputItem.TextBox.Focus();
+    }
 
     private void TextBox_TextChanged(object? sender, TextChangedEventArgs e)
     {
         if (sender is not TextBox textBox) return;
         if (textBox.Text == null) return;
 
+        // expand textbox height
         var lineCount = textBox.Text.Split(Environment.NewLine).Length;
         textBox.Height = lineCount * this.FontSize * 1.5 + 10;
     }
@@ -63,13 +85,10 @@ public partial class ChatControl : UserControl,ILLMChat
     private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
 
-    private void enterCommand()
-    {
-        _= Complete(cancellationTokenSource.Token);
-    }
 
     private async Task Complete(CancellationToken cancellation)
     {
+        // reentrant lock
         if (!inputAcceptable) return;
         inputAcceptable = false;
 
@@ -85,7 +104,7 @@ public partial class ChatControl : UserControl,ILLMChat
         Items.Insert(Items.Count - 1, resultItem);
         lastResultItem = resultItem;
 
-        // progress
+        // show progress timer
         var stopwatch = Stopwatch.StartNew();
 
         using var cts = new CancellationTokenSource();
@@ -105,8 +124,9 @@ public partial class ChatControl : UserControl,ILLMChat
             }
         }, cts.Token);
 
-        bool timerActivate = true;
+        bool timerActivate = true; // timer activate flag, timer will be stopped when first result is returned
 
+        // execute chat command
         await foreach (string ret in chat.GetAsyncCollectionChatResult(command, cancellation))
         {
             if (timerActivate & ret != "")
@@ -124,6 +144,7 @@ public partial class ChatControl : UserControl,ILLMChat
         stopwatch.Stop();
         await displayTimerTask;
 
+        // change color to complete color
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             resultItem.TextColor = completeColor;
@@ -229,10 +250,57 @@ public partial class ChatControl : UserControl,ILLMChat
     {
         public InputItem()
         {
-            Content = TextBox;
+            Content = StackPanel;
             TextBox.Margin = new Thickness(10, 5, 10, 5);
             TextBox.TextWrapping = Avalonia.Media.TextWrapping.Wrap;
+
+            StackPanel.Children.Add(TextBox);
+            StackPanel.Children.Add(ButtonBar);
+            {
+                ButtonBar.Children.Add(ClearButton);
+                ButtonBar.Children.Add(SaveButton);
+                ButtonBar.Children.Add(SendButton);
+            }
+
+
+            SendButton.PropertyChanged += (sender, args) =>
+            {
+                if (args.Property == Button.IsFocusedProperty)
+                {
+                    var isFocused = (bool)args.NewValue!;
+                    if (isFocused)
+                    {
+                        SendButton.Background = new Avalonia.Media.SolidColorBrush(new Avalonia.Media.Color(255, 0, 120, 212));
+                    }
+                    else
+                    {
+                        SendButton.Background = new Avalonia.Media.SolidColorBrush(new Avalonia.Media.Color(255, 20, 20, 20));
+                    }
+                }
+            };
+
+            SaveButton.Click += async (o, e) =>
+            {
+                SendButton.Background = new Avalonia.Media.SolidColorBrush(new Avalonia.Media.Color(255, 0, 120, 212));
+                await Task.Delay(100);
+                SendButton.Background = new Avalonia.Media.SolidColorBrush(new Avalonia.Media.Color(255, 20, 20, 20));
+            };
         }
+
+        public static readonly StyledProperty<IBrush?> SelectionBrushProperty =
+            AvaloniaProperty.Register<TextBox, IBrush?>(nameof(SelectionBrush));
+        public IBrush? SelectionBrush
+        {
+            get => GetValue(SelectionBrushProperty);
+            set => SetValue(SelectionBrushProperty, value);
+        }
+
+        public StackPanel StackPanel = new StackPanel()
+        {
+            Orientation = Avalonia.Layout.Orientation.Vertical,
+            Margin = new Thickness(10, 5, 10, 5),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top
+        };
 
         public TextBox TextBox = new TextBox()
         {
@@ -241,6 +309,44 @@ public partial class ChatControl : UserControl,ILLMChat
             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
             AcceptsReturn = true
         };
+
+        public StackPanel ButtonBar = new StackPanel()
+        {
+            Background = new Avalonia.Media.SolidColorBrush(new Avalonia.Media.Color(255, 20, 20, 20)),
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            Margin = new Thickness(10, 5, 10, 5),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right
+        };
+
+        public Button SendButton = new Button()
+        {
+            Content = "Send",
+            Margin = new Thickness(0, 0, 0, 0),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top
+        };
+
+        public Button SaveButton = new Button()
+        {
+            Content = "Save",
+            Margin = new Thickness(0, 0, 0, 0),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top
+        };
+
+        public Button LoadButton = new Button()
+        {
+            Content = "Load",
+            Margin = new Thickness(0, 0, 0, 0),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top
+        };
+
+        public Button ClearButton = new Button()
+        {
+            Content = "Clear",
+            Margin = new Thickness(0, 0, 0, 0),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top
+        };
+
     }
 }
 

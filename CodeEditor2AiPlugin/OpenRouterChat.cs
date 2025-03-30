@@ -10,6 +10,7 @@ using System.Threading;
 using System.Runtime.CompilerServices;
 using Svg;
 using Avalonia.Threading;
+using System.Text.Json;
 
 namespace CodeEditor2AiPlugin
 {
@@ -31,12 +32,13 @@ namespace CodeEditor2AiPlugin
                 openAIClientOptions
                 );
         }
+
         private string apiKey;
         private OpenAI.Chat.ChatClient client;
+        List<ChatMessage> chatMessages = new List<ChatMessage>();
 
         public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            List<ChatMessage> chatMessages = new List<ChatMessage>();
             chatMessages.Add(ChatMessage.CreateUserMessage(command));
 
             AsyncCollectionResult<StreamingChatCompletionUpdate> completionUpdates
@@ -58,7 +60,43 @@ namespace CodeEditor2AiPlugin
             {
                 sb.Append(ret);
             }
+            chatMessages.Add(ChatMessage.CreateAssistantMessage(sb.ToString()));
             return sb.ToString();
+        }
+
+        public void SaveMessages( string filePath)
+        {
+            try
+            {
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                System.IO.File.WriteAllText(filePath, JsonSerializer.Serialize(chatMessages, options));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Save error: {ex.Message}");
+            }
+        }
+
+        public void LoadMessages(string filePath)
+        {
+            try
+            {
+                if (!System.IO.File.Exists(filePath)) return;
+
+                var json = System.IO.File.ReadAllText(filePath);
+                List<ChatMessage>? messages = JsonSerializer.Deserialize<List<ChatMessage>>(json);
+                if(messages == null) return;
+                chatMessages = messages;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Load error: {ex.Message}");
+            }
+        }
+
+        public void ClearChat()
+        {
+            chatMessages.Clear();
         }
 
     }
