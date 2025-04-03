@@ -54,8 +54,30 @@ public partial class ChatControl : UserControl,ILLMChat
         inputItem.SaveButton.Click += SaveButton_Click;
         inputItem.ClearButton.Click += ClearButton_Click;
         inputItem.LoadButton.Click += LoadButton_Click;
+        inputItem.TestButton.Click += TestButton_Click;
 
         inputItem.TextBox.Focus();
+    }
+
+    private void TestButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        string? command = inputItem.TextBox.Text;
+        if (command == null) return;
+
+//        chat.GenerateFileIndex();
+        string rag = chat.GetRagText(command, "references");
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.Append("以下の参考文献を元にユーザの質問に答えてください。\r\n");
+        sb.Append("# 参考文献\r\n");
+        sb.Append(rag);
+        sb.Append("\r\n");
+        sb.Append("# ユーザの質問\r\n");
+        sb.Append(command);
+
+        _ = Complete(sb.ToString(), cancellationTokenSource.Token);
+
     }
 
     private void LoadButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -75,7 +97,10 @@ public partial class ChatControl : UserControl,ILLMChat
 
     private void SendButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        _ = Complete(cancellationTokenSource.Token);
+        string? command = inputItem.TextBox.Text;
+        if(command == null) return;
+
+        _ = Complete(command,cancellationTokenSource.Token);
         inputItem.TextBox.Focus();
     }
 
@@ -102,16 +127,16 @@ public partial class ChatControl : UserControl,ILLMChat
 
 
 
-    private async Task Complete(CancellationToken cancellation)
+    private async Task Complete(string command,CancellationToken cancellation)
     {
+        string? input = inputItem.TextBox.Text;
+        if(input == null) return;
+
         // reentrant lock
         if (!inputAcceptable) return;
         inputAcceptable = false;
 
-        string? command = inputItem.TextBox.Text;
-        if (command == null) return;
-
-        TextItem commandItem = new TextItem(command);
+        TextItem commandItem = new TextItem(input);
         inputItem.TextBox.Text = "";
         commandItem.TextColor = commandColor;
         Items.Insert(Items.Count - 1, commandItem);
@@ -172,7 +197,7 @@ public partial class ChatControl : UserControl,ILLMChat
     public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, [EnumeratorCancellation] CancellationToken cancellation)
     {
         inputItem.TextBox.Text = command;
-        await Complete(cancellation);
+        await Complete(command,cancellation);
         if(lastResultItem == null) yield break;
         yield return lastResultItem.Text;
     }
@@ -281,6 +306,7 @@ public partial class ChatControl : UserControl,ILLMChat
             StackPanel.Children.Add(TextBox);
             StackPanel.Children.Add(ButtonBar);
             {
+                ButtonBar.Children.Add(TestButton);
                 ButtonBar.Children.Add(ClearButton);
                 ButtonBar.Children.Add(LoadButton);
                 ButtonBar.Children.Add(SaveButton);
@@ -368,6 +394,13 @@ public partial class ChatControl : UserControl,ILLMChat
         public Button ClearButton = new Button()
         {
             Content = "Clear",
+            Margin = new Thickness(0, 0, 0, 0),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top
+        };
+
+        public Button TestButton = new Button()
+        {
+            Content = "Test",
             Margin = new Thickness(0, 0, 0, 0),
             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top
         };
