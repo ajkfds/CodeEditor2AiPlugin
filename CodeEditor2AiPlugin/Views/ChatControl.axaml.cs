@@ -8,6 +8,7 @@ using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
@@ -34,9 +35,12 @@ public partial class ChatControl : UserControl,ILLMChat
         {
             return;
         }
+
+        //this.scrollViewer = scrollViewer;
+        //scrollViewer.ScrollChanged += ScrollViewer_ScrollChanged;
+
         Items.Add(new TextItem("DeepSeek-R1\n"));
         Items.Add( inputItem );
-
 
 
         inputItem.TextBox.TextChanged += TextBox_TextChanged;
@@ -57,7 +61,35 @@ public partial class ChatControl : UserControl,ILLMChat
         inputItem.TestButton.Click += TestButton_Click;
 
         inputItem.TextBox.Focus();
+        ListBox0.Loaded += ListBox0_Loaded;
     }
+
+    private ScrollViewer scrollViewer;
+    private void ListBox0_Loaded(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var scrollViewer = ListBox0.FindDescendantOfType<ScrollViewer>();
+        if (scrollViewer == null) throw new Exception();
+        scrollViewer.ScrollChanged += ScrollViewer_ScrollChanged;
+        this.scrollViewer= scrollViewer;
+    }
+
+    private void ScrollViewer_ScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        // スクロール可能な高さの閾値（例: 100px手前でトリガー）
+        const double triggerThreshold = 100;
+        var triggerPosition = scrollViewer.Extent.Height - scrollViewer.Viewport.Height - triggerThreshold;
+
+        if (scrollViewer.Offset.Y >= triggerPosition)
+        {
+            autoScroll = true;
+        }
+        else
+        {
+            autoScroll = false;
+        }
+    }
+
+    private bool autoScroll { get; set; } = true;
 
     private void TestButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
@@ -110,8 +142,40 @@ public partial class ChatControl : UserControl,ILLMChat
         if (textBox.Text == null) return;
 
         // expand textbox height
-        var lineCount = textBox.Text.Split(Environment.NewLine).Length;
-        textBox.Height = lineCount * this.FontSize * 1.5 + 10;
+//        var lineCount = textBox.Text.Split(Environment.NewLine).Length;
+//        textBox.Height = lineCount * this.FontSize * 1.5 + 10;
+        UpdateTextBoxHeight(textBox);
+    }
+    private void UpdateTextBoxHeight(TextBox textBox)
+    {
+        if (textBox == null || !textBox.IsMeasureValid)
+            return;
+
+        var padding = textBox.Padding;
+        var borderThickness = textBox.BorderThickness;
+        double availableWidth = textBox.Bounds.Width - padding.Left - padding.Right - borderThickness.Left - borderThickness.Right;
+
+        if (availableWidth <= 0)
+            return;
+
+        var typeface = new Typeface(textBox.FontFamily, textBox.FontStyle, textBox.FontWeight);
+        var formattedText = new Avalonia.Media.FormattedText(textBox.Text, System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight, typeface, textBox.FontSize, textBox.Foreground);
+
+
+        //var formattedText = new Avalonia.Media.FormattedText(
+        //    textBox.Text,
+        //    typeface,
+        //    textBox.FontSize,
+        //    textBox.TextAlignment,
+        //    textBox.TextWrapping,
+        //    new Size(availableWidth, double.PositiveInfinity));
+
+        double textHeight = formattedText.Height;//.Bounds.Height;
+        double requiredHeight = textHeight + padding.Top + padding.Bottom + borderThickness.Top + borderThickness.Bottom;
+        requiredHeight = Math.Max(requiredHeight, textBox.FontSize + padding.Top + padding.Bottom + borderThickness.Top + borderThickness.Bottom);
+
+        if (Math.Abs(textBox.Height - requiredHeight) > 0.1)
+            textBox.Height = requiredHeight;
     }
 
     OpenRouterChat chat = new OpenRouterChat();
@@ -177,10 +241,13 @@ public partial class ChatControl : UserControl,ILLMChat
                 timerActivate = false;
             }
             await resultItem.AppendText(ret);
-            await Dispatcher.UIThread.InvokeAsync(() =>
+            if(autoScroll)
             {
-                ListBox0.ScrollIntoView(inputItem);
-            });
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    ListBox0.ScrollIntoView(inputItem);
+                });
+            }
         }
         stopwatch.Stop();
         await displayTimerTask;
