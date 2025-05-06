@@ -2,10 +2,10 @@
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
-using CodeEditor2AiPlugin.ViewModels;
-using CodeEditor2AiPlugin.Views;
+using pluginAi.ViewModels;
+using pluginAi.Views;
 
-namespace CodeEditor2AiPlugin;
+namespace pluginAi;
 
 public partial class App : Application
 {

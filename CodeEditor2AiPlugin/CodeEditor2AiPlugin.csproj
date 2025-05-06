@@ -4,6 +4,7 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <Platforms>AnyCPU;x64</Platforms>
+    <RootNamespace>pluginAi</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +26,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\CodeEditor2Plugin\CodeEditor2Plugin\CodeEditor2Plugin\CodeEditor2Plugin.csproj" />
+    <ProjectReference Include="..\..\CodeEditor2\CodeEditor2\CodeEditor2\CodeEditor2.csproj" />
+    <ProjectReference Include="..\AjkAvaloniaLibs\AjkAvaloniaLibs\AjkAvaloniaLibs.csproj" />
   </ItemGroup>
 
   <ItemGroup>

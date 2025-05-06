@@ -1,6 +1,6 @@
 ﻿using Avalonia.Controls;
 
-namespace CodeEditor2AiPlugin.Views;
+namespace pluginAi.Views;
 
 public partial class MainWindow : Window
 {

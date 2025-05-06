@@ -18,10 +18,10 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using static CodeEditor2AiPlugin.Views.ChatControl;
+using static pluginAi.Views.ChatControl;
 using static System.Net.Mime.MediaTypeNames;
 
-namespace CodeEditor2AiPlugin.Views;
+namespace pluginAi.Views;
 
 public partial class ChatControl : UserControl,ILLMChat
 {
@@ -142,8 +142,6 @@ public partial class ChatControl : UserControl,ILLMChat
         if (textBox.Text == null) return;
 
         // expand textbox height
-//        var lineCount = textBox.Text.Split(Environment.NewLine).Length;
-//        textBox.Height = lineCount * this.FontSize * 1.5 + 10;
         UpdateTextBoxHeight(textBox);
     }
     private void UpdateTextBoxHeight(TextBox textBox)

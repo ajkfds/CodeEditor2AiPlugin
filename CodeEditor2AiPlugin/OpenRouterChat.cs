@@ -19,7 +19,7 @@ using Microsoft.ML.Data;
 using System.Runtime.InteropServices;
 using FaissNet;
 
-namespace CodeEditor2AiPlugin
+namespace pluginAi
 {
     public class OpenRouterChat: ILLMChat
     {

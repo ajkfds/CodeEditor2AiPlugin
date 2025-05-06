@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace CodeEditor2AiPlugin
+namespace pluginAi
 {
     public interface ILLMChat
     {

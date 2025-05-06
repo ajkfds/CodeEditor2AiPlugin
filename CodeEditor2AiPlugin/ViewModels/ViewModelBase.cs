@@ -1,6 +1,6 @@
 ﻿using ReactiveUI;
 
-namespace CodeEditor2AiPlugin.ViewModels;
+namespace pluginAi.ViewModels;
 
 public class ViewModelBase : ReactiveObject
 {

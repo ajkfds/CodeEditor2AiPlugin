@@ -1,0 +1,3 @@
+[submodule "AjkAvaloniaLibs"]
+	path = AjkAvaloniaLibs
+	url = git@github.com:ajkfds/AjkAvaloniaLibs.git

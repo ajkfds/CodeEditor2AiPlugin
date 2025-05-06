@@ -3,10 +3,18 @@
         xmlns:vm="using:CodeEditor2AiPlugin.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:views="clr-namespace:CodeEditor2AiPlugin.Views"
+        xmlns:views="clr-namespace:pluginAi.Views"
+        xmlns:ajkContols="clr-namespace:AjkAvaloniaLibs.Controls;assembly=AjkAvaloniaLibs"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        x:Class="CodeEditor2AiPlugin.Views.MainWindow"
+        x:Class="pluginAi.Views.MainWindow"
         Icon="/Assets/avalonia-logo.ico"
         Title="ChatTest">
-        <views:ChatControl />
+	
+		<Grid ColumnDefinitions="200, 4, *, 4" Grid.Row="0">
+			<ajkContols:TreeControl  Grid.Column="0"/>
+		<GridSplitter Grid.Column="2" Name="SplitterColumn1" ResizeDirection="Columns"/>
+			<views:ChatControl Grid.Column="2"/>
+		</Grid>
+
+
 </Window>

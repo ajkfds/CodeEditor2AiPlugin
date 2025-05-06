@@ -1,4 +1,4 @@
-﻿namespace CodeEditor2AiPlugin.ViewModels;
+﻿namespace pluginAi.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
