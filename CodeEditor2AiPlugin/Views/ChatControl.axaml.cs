@@ -112,9 +112,24 @@ public partial class ChatControl : UserControl,ILLMChat
 
     }
 
+    public void LoadLogFile()
+    {
+        if (LogFilePath == null) return;
+        chat.LoadMessages(LogFilePath);
+    }
+
+    public void SaveLogFile()
+    {
+        if (LogFilePath == null) return;
+        chat.SaveMessages(LogFilePath);
+    }
+
+    public bool AutoSave { set; get; } = false;
+    public string? LogFilePath { set; get; } = null;
+
     private void LoadButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        chat.LoadMessages("temp");
+        LoadLogFile();
     }
 
     private void ClearButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -124,7 +139,7 @@ public partial class ChatControl : UserControl,ILLMChat
 
     private void SaveButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        chat.SaveMessages("temp");
+        SaveLogFile();
     }
 
     private void SendButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -158,15 +173,6 @@ public partial class ChatControl : UserControl,ILLMChat
 
         var typeface = new Typeface(textBox.FontFamily, textBox.FontStyle, textBox.FontWeight);
         var formattedText = new Avalonia.Media.FormattedText(textBox.Text, System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight, typeface, textBox.FontSize, textBox.Foreground);
-
-
-        //var formattedText = new Avalonia.Media.FormattedText(
-        //    textBox.Text,
-        //    typeface,
-        //    textBox.FontSize,
-        //    textBox.TextAlignment,
-        //    textBox.TextWrapping,
-        //    new Size(availableWidth, double.PositiveInfinity));
 
         double textHeight = formattedText.Height;//.Bounds.Height;
         double requiredHeight = textHeight + padding.Top + padding.Bottom + borderThickness.Top + borderThickness.Bottom;
@@ -254,6 +260,7 @@ public partial class ChatControl : UserControl,ILLMChat
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             resultItem.TextColor = completeColor;
+            SaveLogFile();
         });
 
         inputAcceptable = true;

@@ -22,6 +22,16 @@ namespace pluginAi.NavigatePanel
 
         public override async void OnSelected()
         {
+            if (pluginAi.Plugin.chatControl == null) throw new Exception();
+            if (pluginAi.Plugin.chatTab == null) throw new Exception();
+
+            if (ChatLogFile == null) return;
+
+
+            Plugin.chatControl.LogFilePath = ChatLogFile.AbsolutePath;
+            Plugin.chatControl.LoadLogFile();
+            CodeEditor2.Controller.Tabs.SelectTab(Plugin.chatTab);
+
             // activate navigate panel context menu
             //var menu = CodeEditor2.Controller.NavigatePanel.GetContextMenuStrip();
             //if (menu.Items.ContainsKey("openWithExploererTsmi")) menu.Items["openWithExploererTsmi"].Visible = true;

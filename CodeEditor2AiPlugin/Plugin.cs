@@ -54,7 +54,7 @@ namespace pluginAi
             }
 
             chatControl = new Views.ChatControl();
-            Avalonia.Controls.TabItem chatTab = new TabItem()
+            chatTab = new TabItem()
             {
                 Header = "AI Chat",
                 Name = "AIChat",
@@ -79,8 +79,8 @@ namespace pluginAi
 
             return true;
         }
-
-        internal pluginAi.Views.ChatControl? chatControl;
+        internal static Avalonia.Controls.TabItem? chatTab;
+        internal static pluginAi.Views.ChatControl? chatControl;
 
     }
 }
