@@ -36,10 +36,13 @@ public partial class ChatControl : UserControl,ILLMChat
             return;
         }
 
-        //this.scrollViewer = scrollViewer;
-        //scrollViewer.ScrollChanged += ScrollViewer_ScrollChanged;
+        // free openrouter models
+        // https://openrouter.ai/models?max_price=0
+        string model = "deepseek/deepseek-r1:free";
 
-        Items.Add(new TextItem("DeepSeek-R1\n"));
+        chat = new OpenRouterChat(model);
+
+        Items.Add(new TextItem(model+"\n"));
         Items.Add( inputItem );
 
 
@@ -50,7 +53,6 @@ public partial class ChatControl : UserControl,ILLMChat
             Command = ReactiveCommand.Create(() =>
             {
                 inputItem.SendButton.Focus();
-//                enterCommand();
             }),
         };
         inputItem.TextBox.KeyBindings.Add(keyBinding);
@@ -132,6 +134,15 @@ public partial class ChatControl : UserControl,ILLMChat
             {
                 if (content == null) continue;
                 TextItem resultItem = new TextItem(content.Text);
+                if (chatmessage is OpenAI.Chat.UserChatMessage)
+                {
+                    resultItem.TextColor = commandColor;
+                }
+                else if (chatmessage is OpenAI.Chat.AssistantChatMessage)
+                {
+                    resultItem.TextColor = completeColor;
+                }
+                
                 Items.Insert(Items.Count-1, resultItem);
                 lastResultItem = resultItem;
             }
@@ -203,7 +214,7 @@ public partial class ChatControl : UserControl,ILLMChat
             textBox.Height = requiredHeight;
     }
 
-    OpenRouterChat chat = new OpenRouterChat();
+    OpenRouterChat chat;
     InputItem inputItem = new InputItem();
     TextItem? lastResultItem = null;
 

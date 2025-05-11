@@ -23,7 +23,7 @@ namespace pluginAi
 {
     public class OpenRouterChat: ILLMChat
     {
-        public OpenRouterChat()
+        public OpenRouterChat(string model)
         {
             using (System.IO.StreamReader sw = new System.IO.StreamReader(@"C:\ApiKey\openrouter.txt"))
             {
@@ -31,10 +31,12 @@ namespace pluginAi
                 if (apiKey == "") throw new Exception();
             }
             OpenAI.OpenAIClientOptions openAIClientOptions = new OpenAI.OpenAIClientOptions()
-            { Endpoint = new System.Uri("https://openrouter.ai/api/v1") };
+            { Endpoint = new System.Uri(
+                "https://openrouter.ai/api/v1"
+            ) };
 
             client = new OpenAI.Chat.ChatClient(
-                model: "deepseek/deepseek-r1:free",
+                model: model,
                 new ApiKeyCredential(apiKey),
                 openAIClientOptions
                 );
