@@ -59,9 +59,14 @@ public partial class ChatControl : UserControl,ILLMChat
         inputItem.ClearButton.Click += ClearButton_Click;
         inputItem.LoadButton.Click += LoadButton_Click;
         inputItem.TestButton.Click += TestButton_Click;
-
+        inputItem.AbortButton.Click += AbortButton_Click;
         inputItem.TextBox.Focus();
         ListBox0.Loaded += ListBox0_Loaded;
+    }
+
+    private void AbortButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        cancellationTokenSource.Cancel();
     }
 
     private ScrollViewer scrollViewer;
@@ -95,8 +100,6 @@ public partial class ChatControl : UserControl,ILLMChat
     {
         string? command = inputItem.TextBox.Text;
         if (command == null) return;
-
-//        chat.GenerateFileIndex();
         string rag = chat.GetRagText(command, "references");
 
         StringBuilder sb = new StringBuilder();
@@ -109,13 +112,31 @@ public partial class ChatControl : UserControl,ILLMChat
         sb.Append(command);
 
         _ = Complete(sb.ToString(), cancellationTokenSource.Token);
-
     }
 
     public void LoadLogFile()
     {
         if (LogFilePath == null) return;
         chat.LoadMessages(LogFilePath);
+
+        int items = Items.Count;
+        for (int i = 0; i < items-2; i++)
+        {
+            Items.RemoveAt(1);
+        }
+
+        List<OpenAI.Chat.ChatMessage> chatmessages = chat.GetChatMessages();
+        foreach (OpenAI.Chat.ChatMessage chatmessage in chatmessages) 
+        {
+            foreach(var content in chatmessage.Content)
+            {
+                if (content == null) continue;
+                TextItem resultItem = new TextItem(content.Text);
+                Items.Insert(Items.Count-1, resultItem);
+                lastResultItem = resultItem;
+            }
+        }
+
     }
 
     public void SaveLogFile()
@@ -204,66 +225,72 @@ public partial class ChatControl : UserControl,ILLMChat
         if (!inputAcceptable) return;
         inputAcceptable = false;
 
-        TextItem commandItem = new TextItem(input);
-        inputItem.TextBox.Text = "";
-        commandItem.TextColor = commandColor;
-        Items.Insert(Items.Count - 1, commandItem);
-
-        TextItem resultItem = new TextItem("");
-        Items.Insert(Items.Count - 1, resultItem);
-        lastResultItem = resultItem;
-
-        // show progress timer
-        var stopwatch = Stopwatch.StartNew();
-
-        using var cts = new CancellationTokenSource();
-        var displayTimerTask = Task.Run(async () =>
+        try
         {
-            while (!cts.Token.IsCancellationRequested)
-            {
-                try
-                {
-                    await resultItem.SetText("waiting ... " + (stopwatch.ElapsedMilliseconds / 1000f).ToString("F1") + "s");
-                    await Task.Delay(100, cts.Token);
-                }
-                catch (TaskCanceledException)
-                {
-                    break;
-                }
-            }
-        }, cts.Token);
+            TextItem commandItem = new TextItem(input);
+            inputItem.TextBox.Text = "";
+            commandItem.TextColor = commandColor;
+            Items.Insert(Items.Count - 1, commandItem);
 
-        bool timerActivate = true; // timer activate flag, timer will be stopped when first result is returned
+            TextItem resultItem = new TextItem("");
+            Items.Insert(Items.Count - 1, resultItem);
+            lastResultItem = resultItem;
 
-        // execute chat command
-        await foreach (string ret in chat.GetAsyncCollectionChatResult(command, cancellation))
-        {
-            if (timerActivate & ret != "")
+            // show progress timer
+            var stopwatch = Stopwatch.StartNew();
+
+            using var cts = new CancellationTokenSource();
+            var displayTimerTask = Task.Run(async () =>
             {
-                cts.Cancel();
-                await resultItem.SetText("");
-                timerActivate = false;
-            }
-            await resultItem.AppendText(ret);
-            if(autoScroll)
-            {
-                await Dispatcher.UIThread.InvokeAsync(() =>
+                while (!cts.Token.IsCancellationRequested)
                 {
-                    ListBox0.ScrollIntoView(inputItem);
-                });
+                    try
+                    {
+                        await resultItem.SetText("waiting ... " + (stopwatch.ElapsedMilliseconds / 1000f).ToString("F1") + "s");
+                        await Task.Delay(100, cts.Token);
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        break;
+                    }
+                }
+            }, cts.Token);
+
+            bool timerActivate = true; // timer activate flag, timer will be stopped when first result is returned
+
+            // execute chat command
+            await foreach (string ret in chat.GetAsyncCollectionChatResult(command, cancellation))
+            {
+                if (timerActivate & ret != "")
+                {
+                    cts.Cancel();
+                    await resultItem.SetText("");
+                    timerActivate = false;
+                }
+                await resultItem.AppendText(ret);
+                if (autoScroll)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        ListBox0.ScrollIntoView(inputItem);
+                    });
+                }
             }
+            stopwatch.Stop();
+            await displayTimerTask;
+
+            // change color to complete color
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                resultItem.TextColor = completeColor;
+                SaveLogFile();
+            });
         }
-        stopwatch.Stop();
-        await displayTimerTask;
-
-        // change color to complete color
-        await Dispatcher.UIThread.InvokeAsync(() =>
+        finally
         {
-            resultItem.TextColor = completeColor;
-            SaveLogFile();
-        });
-
-        inputAcceptable = true;
+            inputAcceptable = true;
+            cancellationTokenSource = new CancellationTokenSource();
+        }
     }
 
     public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, [EnumeratorCancellation] CancellationToken cancellation)
@@ -382,6 +409,7 @@ public partial class ChatControl : UserControl,ILLMChat
                 ButtonBar.Children.Add(ClearButton);
                 ButtonBar.Children.Add(LoadButton);
                 ButtonBar.Children.Add(SaveButton);
+                ButtonBar.Children.Add(AbortButton);
                 ButtonBar.Children.Add(SendButton);
             }
 
@@ -452,6 +480,13 @@ public partial class ChatControl : UserControl,ILLMChat
         public Button SaveButton = new Button()
         {
             Content = "Save",
+            Margin = new Thickness(0, 0, 0, 0),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top
+        };
+
+        public Button AbortButton = new Button()
+        {
+            Content = "Abort",
             Margin = new Thickness(0, 0, 0, 0),
             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top
         };

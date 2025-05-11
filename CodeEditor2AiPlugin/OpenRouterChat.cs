@@ -64,7 +64,10 @@ namespace pluginAi
             chatMessages.Add(ChatMessage.CreateAssistantMessage(sb.ToString()));
         }
 
-
+        public List<ChatMessage> GetChatMessages()
+        {
+            return chatMessages;
+        }
         public class InputData
         {
             [LoadColumn(0)]
@@ -256,9 +259,10 @@ namespace pluginAi
             }
         }
 
-
+        
         public void LoadMessages(string filePath)
         {
+            chatMessages.Clear();
             try
             { 
                 using(System.IO.StreamReader sr = new System.IO.StreamReader(filePath))
