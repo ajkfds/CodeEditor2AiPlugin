@@ -12,9 +12,24 @@ namespace pluginAi.NavigatePanel
 {
     public static class NavigatePanelMenu
     {
+        /// <summary>
+        /// Register the menu customization for the NavigatePanel.
+        /// </summary>
         public static void Register()
         {
-            MenuItem? menuItem_Add = CodeEditor2.Controller.NavigatePanel.GetContextMenuItem(new List<string> { "Add" });
+            // add the menu customization to the FolderNode context menu
+            CodeEditor2.NavigatePanel.FolderNode.CustomizeNavigateNodeContextMenu += Customize;
+        }
+        public static void Customize(ContextMenu contextMenu)
+        {
+            MenuItem? menuItem_Add = contextMenu.Items.FirstOrDefault(m =>
+            {
+                if (m is not MenuItem) return false;
+                MenuItem? menuItem = m as MenuItem;
+                if (menuItem == null) return false;
+                if (menuItem.Header is string && (string)menuItem.Header == "Add") return true;
+                return false;
+            }) as MenuItem;
             if (menuItem_Add == null) return;
             {
                 MenuItem menuItem_AddFile = CodeEditor2.Global.CreateMenuItem("ai chat", "MenuItem_AddAiChat",
