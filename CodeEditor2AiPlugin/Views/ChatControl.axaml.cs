@@ -38,7 +38,8 @@ public partial class ChatControl : UserControl,ILLMChat
 
         // free openrouter models
         // https://openrouter.ai/models?max_price=0
-        string model = "deepseek/deepseek-r1:free";
+        //string model = "deepseek/deepseek-r1:free";
+        string model = "moonshotai/kimi-k2:free";
 
         chat = new OpenRouterChat(model);
 
