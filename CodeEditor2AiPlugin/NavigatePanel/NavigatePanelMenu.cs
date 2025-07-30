@@ -59,7 +59,7 @@ namespace pluginAi.NavigatePanel
             }
 
             FolderNode? folderNode = node as FolderNode;
-            if (folderNode != null)
+            if (folderNode != null&& folderNode.Folder != null)
             {
                 return folderNode.Folder.RelativePath;
             }
@@ -86,16 +86,6 @@ namespace pluginAi.NavigatePanel
             if (window.Cancel) return;
             string name = window.InputText.Trim();
 
-            // duplicate check
-            //ProjectProperty? projectProperty = project.ProjectProperties[Plugin.StaticID] as pluginVerilog.ProjectProperty;
-            //if (projectProperty == null) return;
-            //BuildingBlock? buildingBlock = projectProperty.GetBuildingBlock(name);
-            //if (buildingBlock != null)
-            //{
-            //    CodeEditor2.Controller.AppendLog("Duplicate BuildingBlock Name ;" + name);
-            //    return;
-            //}
-
             // create file
             string fileName = name + "." + extension;
             string path = project.GetAbsolutePath(relativePath + fileName);
@@ -105,9 +95,16 @@ namespace pluginAi.NavigatePanel
             }
             else
             {
-                using (System.IO.StreamWriter sw = new System.IO.StreamWriter(path))
+                try
                 {
-                    streamWriter(sw, name);
+                    using (System.IO.StreamWriter sw = new System.IO.StreamWriter(path))
+                    {
+                        streamWriter(sw, name);
+                    }
+                }catch(Exception ex)
+                {
+                    Controller.AppendLog("** error : NavigatePanelMenu.generateFile (" + path + ")", Avalonia.Media.Colors.Red);
+                    Controller.AppendLog("* " + ex.Message, Avalonia.Media.Colors.Red);
                 }
             }
 
