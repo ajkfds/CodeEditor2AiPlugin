@@ -8,23 +8,19 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.AI;
-using OpenAI.Chat;
-
-//using OpenAI;
-//using OpenAI.Chat;
 
 namespace pluginAi
 {
     /// <summary>
     /// OpenRouter を内部で OpenAI.ChatClient (2.x) 経由で呼び出す IChatClient 実装
     /// </summary>
-    public sealed class OpenRouterChatClient : IChatClient
+    public sealed class OpenRouterChatCompletionClient : IChatClient
     {
         private readonly OpenAI.Chat.ChatClient _innerClient;
         private readonly string _modelId;
         private readonly string? _applicationName;
 
-        public OpenRouterChatClient(
+        public OpenRouterChatCompletionClient(
             string apiKey,
             string modelId,
             string? applicationName = null
@@ -38,6 +34,11 @@ namespace pluginAi
                 Endpoint = new Uri("https://openrouter.ai/api/v1"),
                 UserAgentApplicationId = _applicationName
             };
+            //client = new OpenAI.Chat.ChatClient(
+            //    model: model,
+            //    new ApiKeyCredential(apiKey),
+            //    openAIClientOptions
+            //    );
 
             var credential = new ApiKeyCredential(apiKey);
             var openAiClient = new OpenAI.OpenAIClient(credential, options);
@@ -71,7 +72,7 @@ namespace pluginAi
         public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<Microsoft.Extensions.AI.ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
         {
             var openAiMessages = messages.Select(ToOpenAiMessage).ToList();
-            var chatOptions = new ChatCompletionOptions();
+            var chatOptions = new OpenAI.Chat.ChatCompletionOptions();
             CopyOptions(options, chatOptions);
 
             await foreach (var chunk in _innerClient.CompleteChatStreamingAsync(
@@ -135,13 +136,13 @@ namespace pluginAi
             switch (m.Role.Value)
             {
                 case "system":
-                    return new SystemChatMessage(m.Text ?? string.Empty);
+                    return new OpenAI.Chat.SystemChatMessage(m.Text ?? string.Empty);
                 case "user":
-                    return new UserChatMessage(m.Text ?? string.Empty);
+                    return new OpenAI.Chat.UserChatMessage(m.Text ?? string.Empty);
                 case "assistant":
-                    return new AssistantChatMessage(m.Text ?? string.Empty);
+                    return new OpenAI.Chat.AssistantChatMessage(m.Text ?? string.Empty);
                 case "tool":
-                    return new ToolChatMessage(m.Text ?? string.Empty);
+                    return new OpenAI.Chat.ToolChatMessage(m.Text ?? string.Empty);
                 default:
                     throw new NotSupportedException($"Unknown role {m.Role}");
             }

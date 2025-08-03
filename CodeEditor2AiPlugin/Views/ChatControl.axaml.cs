@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Microsoft.Extensions.AI;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
@@ -41,7 +42,7 @@ public partial class ChatControl : UserControl,ILLMChat
         //string model = "deepseek/deepseek-r1:free";
         string model = "moonshotai/kimi-k2:free";
 
-        chat = new OpenRouterChat(model);
+        chat = new OpenRouterChatMS(model);
 
         Items.Add(new TextItem(model+"\n"));
         Items.Add( inputItem );
@@ -128,25 +129,28 @@ public partial class ChatControl : UserControl,ILLMChat
             Items.RemoveAt(1);
         }
 
-        List<OpenAI.Chat.ChatMessage> chatmessages = chat.GetChatMessages();
-        foreach (OpenAI.Chat.ChatMessage chatmessage in chatmessages) 
+        List<Microsoft.Extensions.AI.ChatMessage> chatmessages = chat.GetChatMessages();
+        foreach (Microsoft.Extensions.AI.ChatMessage chatmessage in chatmessages) 
         {
-            foreach(var content in chatmessage.Content)
+            TextItem resultItem = new TextItem(chatmessage.Text);
+            if (chatmessage.Role == ChatRole.System)
             {
-                if (content == null) continue;
-                TextItem resultItem = new TextItem(content.Text);
-                if (chatmessage is OpenAI.Chat.UserChatMessage)
-                {
-                    resultItem.TextColor = commandColor;
-                }
-                else if (chatmessage is OpenAI.Chat.AssistantChatMessage)
-                {
-                    resultItem.TextColor = completeColor;
-                }
-                
-                Items.Insert(Items.Count-1, resultItem);
-                lastResultItem = resultItem;
+                resultItem.TextColor = completeColor;
             }
+            else if (chatmessage.Role == ChatRole.User)
+            {
+                resultItem.TextColor = commandColor;
+            }
+            else if (chatmessage.Role == ChatRole.Assistant)
+            {
+                resultItem.TextColor = completeColor;
+            }
+            else if (chatmessage.Role == ChatRole.Tool)
+            {
+                resultItem.TextColor = completeColor;
+            }
+            Items.Insert(Items.Count - 1, resultItem);
+            lastResultItem = resultItem;
         }
 
     }
@@ -215,7 +219,7 @@ public partial class ChatControl : UserControl,ILLMChat
             textBox.Height = requiredHeight;
     }
 
-    OpenRouterChat chat;
+    OpenRouterChatMS chat;
     InputItem inputItem = new InputItem();
     TextItem? lastResultItem = null;
 
