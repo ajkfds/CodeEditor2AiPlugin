@@ -4,10 +4,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.AI;
+using OpenAI.Assistants;
+using OpenAI.Chat;
 
 namespace pluginAi
 {
@@ -84,51 +87,6 @@ namespace pluginAi
             }
         }
 
-        //public ChatClientMetadata Metadata { get; } =
-        //    new(//clientName: nameof(OpenRouterChatClient),
-        //        providerName: "OpenRouter"//,
-        //        );// modelId: string.Empty); // modelId はセット時に毎回確認するのでここでは空
-
-
-        //public async Task<ChatCompletion> CompleteAsync(
-        //    IEnumerable<Microsoft.Extensions.AI.ChatMessage> messages,
-        //    ChatOptions? options = null,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var openAiMessages = messages.Select(ToOpenAiMessage).ToList();
-
-        //    var chatOptions = new ChatCompletionOptions();
-        //    CopyOptions(options, chatOptions);
-
-        //    var resp = await _innerClient.CompleteChatAsync(
-        //        openAiMessages,
-        //        chatOptions,
-        //        cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    return FromOpenAi(resp);
-        //}
-
-        //public async IAsyncEnumerable<StreamingChatCompletionUpdate> CompleteStreamingAsync(
-        //    IEnumerable<Microsoft.Extensions.AI.ChatMessage> messages,
-        //    ChatOptions? options = null,
-        //    [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        //{
-        //    var openAiMessages = messages.Select(ToOpenAiMessage).ToList();
-        //    var chatOptions = new ChatCompletionOptions();
-        //    CopyOptions(options, chatOptions);
-
-        //    await foreach (var chunk in _innerClient.CompleteChatStreamingAsync(
-        //        openAiMessages,
-        //        chatOptions,
-        //        cancellationToken).ConfigureAwait(false))
-        //    {
-        //        yield return FromOpenAi(chunk);
-        //    }
-        //}
-
-
-        #region helpers
 
         private static OpenAI.Chat.ChatMessage ToOpenAiMessage(
             Microsoft.Extensions.AI.ChatMessage m)
@@ -149,26 +107,68 @@ namespace pluginAi
         }
 
         private static void CopyOptions(
-            ChatOptions? src,
-            OpenAI.Chat.ChatCompletionOptions dst)
+            ChatOptions? msOptions,
+            OpenAI.Chat.ChatCompletionOptions openAiOptions)
         {
-            if (src is null) return;
+            if (msOptions is null) return;
 
-            dst.Temperature = (float?)(src.Temperature);
-            dst.MaxOutputTokenCount = src.MaxOutputTokens;
-            dst.TopP = (float?)(src.TopP);
-            foreach (var s in src.StopSequences ?? Array.Empty<string>())
-                dst.StopSequences.Add(s);
+            //dst.Model = src.Model;
+            //dst.StopSequences = src.StopSequences?.ToList();
+            //dst.Seed = src.Seed;
+            //dst.User = src.User;
 
-//            if (src.Seed.HasValue) dst.Seed = (long)src.Seed.Value;
 
-            if (src.ResponseFormat is ChatResponseFormatText text)
-                dst.ResponseFormat = global::OpenAI.Chat.ChatResponseFormat.CreateTextFormat();
+            openAiOptions.Temperature = msOptions.Temperature;
+            openAiOptions.FrequencyPenalty = msOptions.FrequencyPenalty;
+            openAiOptions.PresencePenalty = msOptions.PresencePenalty;
+            openAiOptions.MaxOutputTokenCount = msOptions.MaxOutputTokens;
+            openAiOptions.TopP = (float?)(msOptions.TopP);
 
-            if (src.ResponseFormat is ChatResponseFormatJson json)
-                dst.ResponseFormat = global::OpenAI.Chat.ChatResponseFormat.CreateJsonObjectFormat();
+
+            foreach (var s in msOptions.StopSequences ?? Array.Empty<string>())
+                openAiOptions.StopSequences.Add(s);
+
+            if (msOptions.Tools != null)
+            {
+                foreach (var tool in msOptions.Tools)
+                {
+                    System.Diagnostics.Debug.Print(tool.Name);
+                    OpenAI.Chat.ChatTool openAiTool = OpenAI.Chat.ChatTool.CreateFunctionTool(
+                    functionName: tool.Name,
+                    functionDescription: tool.Description
+                    );
+                    openAiOptions.Tools.Add(openAiTool);
+                }
+            }
+
+            if (msOptions.ResponseFormat is ChatResponseFormatText text)
+                openAiOptions.ResponseFormat = global::OpenAI.Chat.ChatResponseFormat.CreateTextFormat();
+
+            if (msOptions.ResponseFormat is ChatResponseFormatJson json)
+                openAiOptions.ResponseFormat = global::OpenAI.Chat.ChatResponseFormat.CreateJsonObjectFormat();
         }
+        //private static ToolDefinition ConvertTool(FunctionToolDefinition msTool)
+        //{
+        //    return new ToolDefinition
+        //    {
+        //        Function = new FunctionDefinition
+        //        {
+        //            Name = msTool.Name,
+        //            Description = msTool.Description,
+        //            Parameters = ConvertParameters(msTool)
+        //        }
+        //    };
+        //}
 
+        //private static FunctionParameters ConvertParameters(FunctionToolDefinition msTool)
+        //{
+        //    if (msTool.Parameters is null)
+        //        return new FunctionParameters();
+
+        //    var json = JsonSerializer.Serialize(msTool.Parameters);
+        //    var doc = JsonDocument.Parse(json);
+        //    return new FunctionParameters { Schema = doc.RootElement.Clone() };
+        //}
 
         private static ChatResponse ChatResponseFromOpenAi(
             OpenAI.Chat.ChatCompletion c)
@@ -202,9 +202,41 @@ namespace pluginAi
         private static Microsoft.Extensions.AI.ChatResponseUpdate StreamFromOpenAi(
             OpenAI.Chat.StreamingChatCompletionUpdate c)
         {
-            return new Microsoft.Extensions.AI.ChatResponseUpdate(null, string.Concat(c.ContentUpdate.Select(part => part.Text)))
+            if(c.ToolCallUpdates != null)
+            {
+                foreach(var update in c.ToolCallUpdates)
+                {
+                    update.
+                }
+            }
+
+            ChatRole? role = null;
+            switch (c.Role)
+            {
+                case ChatMessageRole.Assistant:
+                    role = new ChatRole("assistant");
+                    break;
+                case ChatMessageRole.User:
+                    role = new ChatRole("user");
+                    break;
+                case ChatMessageRole.Developer:
+                    role = new ChatRole("developer");
+                    break;
+                case ChatMessageRole.Function:
+                    role = new ChatRole("function");
+                    break;
+                case ChatMessageRole.System:
+                    role = new ChatRole("System");
+                    break;
+                case ChatMessageRole.Tool:
+                    role = new ChatRole("tool");
+                    break;
+            }
+
+            return new Microsoft.Extensions.AI.ChatResponseUpdate(role, string.Concat(c.ContentUpdate.Select(part => part.Text)))
             {
                 ConversationId = c.CompletionId,
+                MessageId = c.CompletionId,
                 CreatedAt = c.CreatedAt,
                 FinishReason = c.FinishReason switch
                 {
@@ -214,14 +246,11 @@ namespace pluginAi
                     OpenAI.Chat.ChatFinishReason.ContentFilter => Microsoft.Extensions.AI.ChatFinishReason.ContentFilter,
                     _ => Microsoft.Extensions.AI.ChatFinishReason.Stop
                 },
-                Role = Microsoft.Extensions.AI.ChatRole.Assistant,
-//                TextUpdate = string.Concat(c.ContentUpdate.Select(part => part.Text)),
                 ModelId = c.Model
             };
         }
 
 
 
-        #endregion
     }
 }

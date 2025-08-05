@@ -49,7 +49,7 @@ namespace pluginAi
         public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             chatMessages.Add(ChatMessage.CreateUserMessage(command));
-            GetVector(command);
+            //GetVector(command);
 
             AsyncCollectionResult<StreamingChatCompletionUpdate> completionUpdates
                 = client.CompleteChatStreamingAsync(chatMessages, null, cancellationToken);

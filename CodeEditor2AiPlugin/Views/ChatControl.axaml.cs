@@ -39,8 +39,8 @@ public partial class ChatControl : UserControl,ILLMChat
 
         // free openrouter models
         // https://openrouter.ai/models?max_price=0
-        //string model = "deepseek/deepseek-r1:free";
-        string model = "moonshotai/kimi-k2:free";
+        string model = "deepseek/deepseek-r1:free";
+        //string model = "moonshotai/kimi-k2:free";
 
         chat = new OpenRouterChatMS(model);
 
@@ -361,16 +361,30 @@ public partial class ChatControl : UserControl,ILLMChat
 
             ContextMenu contextMenu = new ContextMenu();
             {
-                MenuItem menuItem = new MenuItem()
                 {
-                    Header = "Copy"
-                };
-                menuItem.Click += (sender, e) =>
+                    MenuItem menuItem = new MenuItem()
+                    {
+                        Header = "Copy All"
+                    };
+                    menuItem.Click += (sender, e) =>
+                    {
+                        var top = TopLevel.GetTopLevel(this);
+                        top?.Clipboard?.SetTextAsync(textBox.Text);
+                    };
+                    contextMenu.Items.Add(menuItem);
+                }
                 {
-                    var top = TopLevel.GetTopLevel(this);
-                    top?.Clipboard?.SetTextAsync(textBox.Text);
-                };
-                contextMenu.Items.Add(menuItem);
+                    MenuItem menuItem = new MenuItem()
+                    {
+                        Header = "Copy"
+                    };
+                    menuItem.Click += (sender, e) =>
+                    {
+                        var top = TopLevel.GetTopLevel(this);
+                        top?.Clipboard?.SetTextAsync(textBox.SelectedText);
+                    };
+                    contextMenu.Items.Add(menuItem);
+                }
             }
 
             textBox.ContextMenu = contextMenu;
