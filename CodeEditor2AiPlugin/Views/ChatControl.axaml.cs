@@ -10,6 +10,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.AI;
+using Microsoft.ML;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
@@ -39,10 +40,14 @@ public partial class ChatControl : UserControl,ILLMChat
 
         // free openrouter models
         // https://openrouter.ai/models?max_price=0
-        string model = "deepseek/deepseek-r1:free";
-        //string model = "moonshotai/kimi-k2:free";
+        //string model = "deepseek/deepseek-r1:free";
+//        string model = "moonshotai/kimi-k2:free";
+        //        string model = "deepseek/deepseek-chat-v3-0324:free";
+        //        string model = "moonshotai/kimi-dev-72b:free";
+        //string model = "openai/gpt-oss-20b:free";
+        string model = "openai/gpt-oss-20b:free";
 
-        chat = new OpenRouterChatMS(model);
+        chat = new OpenRouterChat(model);
 
         Items.Add(new TextItem(model+"\n"));
         Items.Add( inputItem );
@@ -104,13 +109,13 @@ public partial class ChatControl : UserControl,ILLMChat
     {
         string? command = inputItem.TextBox.Text;
         if (command == null) return;
-        string rag = chat.GetRagText(command, "references");
+//        string rag = chat.GetRagText(command, "references");
 
         StringBuilder sb = new StringBuilder();
 
         sb.Append("以下の参考文献を元にユーザの質問に答えてください。\r\n");
         sb.Append("# 参考文献\r\n");
-        sb.Append(rag);
+//        sb.Append(rag);
         sb.Append("\r\n");
         sb.Append("# ユーザの質問\r\n");
         sb.Append(command);
@@ -219,7 +224,7 @@ public partial class ChatControl : UserControl,ILLMChat
             textBox.Height = requiredHeight;
     }
 
-    OpenRouterChatMS chat;
+    OpenRouterChat chat;
     InputItem inputItem = new InputItem();
     TextItem? lastResultItem = null;
 
@@ -301,6 +306,9 @@ public partial class ChatControl : UserControl,ILLMChat
                 resultItem.TextColor = completeColor;
                 SaveLogFile();
             });
+        }catch(Exception ex)
+        {
+            CodeEditor2.Controller.AppendLog(ex.Message, Avalonia.Media.Colors.Red);
         }
         finally
         {

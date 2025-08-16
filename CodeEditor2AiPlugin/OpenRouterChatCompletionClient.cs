@@ -202,13 +202,6 @@ namespace pluginAi
         private static Microsoft.Extensions.AI.ChatResponseUpdate StreamFromOpenAi(
             OpenAI.Chat.StreamingChatCompletionUpdate c)
         {
-            if(c.ToolCallUpdates != null)
-            {
-                foreach(var update in c.ToolCallUpdates)
-                {
-                    update.
-                }
-            }
 
             ChatRole? role = null;
             switch (c.Role)
@@ -219,9 +212,9 @@ namespace pluginAi
                 case ChatMessageRole.User:
                     role = new ChatRole("user");
                     break;
-                case ChatMessageRole.Developer:
-                    role = new ChatRole("developer");
-                    break;
+                //case ChatMessageRole.Developer:
+                //    role = new ChatRole("developer");
+                //    break;
                 case ChatMessageRole.Function:
                     role = new ChatRole("function");
                     break;
