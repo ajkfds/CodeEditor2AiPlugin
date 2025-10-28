@@ -77,17 +77,16 @@ namespace pluginAi.NavigatePanel
 
         public override void UpdateVisual()
         {
-            if (Dispatcher.UIThread.CheckAccess())
+            Dispatcher.UIThread.Post(() =>
             {
-                _updateVisual();
-            }
-            else
-            {
-                Dispatcher.UIThread.Post(() =>
+                try
                 {
                     _updateVisual();
-                });
-            }
+                }catch(Exception ex)
+                {
+                    CodeEditor2.Controller.AppendLog("#Exception " + ex.Message, Avalonia.Media.Colors.Red);
+                }
+            });
         }
         public void _updateVisual()
         {

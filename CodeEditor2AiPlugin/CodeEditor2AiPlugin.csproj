@@ -27,9 +27,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\AjkAvaloniaLibs\AjkAvaloniaLibs\AjkAvaloniaLibs.csproj" />
     <ProjectReference Include="..\..\CodeEditor2Plugin\CodeEditor2Plugin\CodeEditor2Plugin\CodeEditor2Plugin.csproj" />
     <ProjectReference Include="..\..\CodeEditor2\CodeEditor2\CodeEditor2\CodeEditor2.csproj" />
-    <ProjectReference Include="..\AjkAvaloniaLibs\AjkAvaloniaLibs\AjkAvaloniaLibs.csproj" />
+    <ProjectReference Include="..\..\AjkAvaloniaLibs\AjkAvaloniaLibs\AjkAvaloniaLibs.csproj" />
   </ItemGroup>
 
   <ItemGroup>
