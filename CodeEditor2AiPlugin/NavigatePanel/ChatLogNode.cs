@@ -32,37 +32,6 @@ namespace pluginAi.NavigatePanel
             Plugin.chatControl.LoadLogFile();
             CodeEditor2.Controller.Tabs.SelectTab(Plugin.chatTab);
 
-            // activate navigate panel context menu
-            //var menu = CodeEditor2.Controller.NavigatePanel.GetContextMenuStrip();
-            //if (menu.Items.ContainsKey("openWithExploererTsmi")) menu.Items["openWithExploererTsmi"].Visible = true;
-            //if (menu.Items.ContainsKey("icarusVerilogTsmi")) menu.Items["icarusVerilogTsmi"].Visible = true;
-            //if (menu.Items.ContainsKey("VerilogDebugTsmi")) menu.Items["VerilogDebugTsmi"].Visible = true;
-
-            //            System.Diagnostics.Debug.Print("## VerilogFileNode.OnSelected");
-
-            //if (TextFile == null)
-            //{
-            //    if (NodeSelected != null) NodeSelected();
-            //    Update();
-            //    return;
-            //}
-
-            //if (!CodeEditor2.Global.StopBackGroundParse)
-            //{
-            //    if (TextFile.ParseValid && !TextFile.ReparseRequested)
-            //    {
-            //        // skip parse
-            //    }
-            //    else
-            //    {
-            //        CodeEditor2.Global.StopBackGroundParse = true;
-            //        await parseHierarchy();
-            //        CodeEditor2.Global.StopBackGroundParse = false;
-            //    }
-            //}
-
-            //CodeEditor2.Controller.CodeEditor.SetTextFile(TextFile, true);
-            //if (NodeSelected != null) NodeSelected();
             Update();
         }
 
