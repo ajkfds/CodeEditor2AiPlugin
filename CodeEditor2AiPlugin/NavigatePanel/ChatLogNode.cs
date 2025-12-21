@@ -22,26 +22,34 @@ namespace pluginAi.NavigatePanel
 
         public override async void OnSelected()
         {
-            if (pluginAi.Plugin.chatControl == null) throw new Exception();
-            if (pluginAi.Plugin.chatTab == null) throw new Exception();
+            try
+            {
+                if (pluginAi.Plugin.chatControl == null) throw new Exception();
+                if (pluginAi.Plugin.chatTab == null) throw new Exception();
 
-            if (ChatLogFile == null) return;
+                if (ChatLogFile == null) return;
 
 
-            Plugin.chatControl.LogFilePath = ChatLogFile.AbsolutePath;
-            Plugin.chatControl.LoadLogFile();
-            CodeEditor2.Controller.Tabs.SelectTab(Plugin.chatTab);
+                Plugin.chatControl.LogFilePath = ChatLogFile.AbsolutePath;
+                Plugin.chatControl.LoadLogFile();
+                CodeEditor2.Controller.Tabs.SelectTab(Plugin.chatTab);
 
-            Update();
+                await UpdateAsync();
+            }
+            catch
+            {
+                if (System.Diagnostics.Debugger.IsAttached) System.Diagnostics.Debugger.Break();
+            }
         }
 
-        public override void Update()
+        public override Task UpdateAsync()
         {
             if (ChatLogFile == null)
             {
-                return;
+                return Task.CompletedTask;
             }
             UpdateVisual();
+            return Task.CompletedTask;
         }
 
         public override void UpdateVisual()
