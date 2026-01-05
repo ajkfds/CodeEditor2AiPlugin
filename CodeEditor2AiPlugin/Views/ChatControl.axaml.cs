@@ -28,6 +28,9 @@ namespace pluginAi.Views;
 public partial class ChatControl : UserControl,ILLMChat
 {
     public ObservableCollection<ChatItem> Items { get; set; } = new ObservableCollection<ChatItem>();
+
+    public OpenRouterModels.Model Model { get; protected set; }
+
     public ChatControl()
     {
         DataContext = this;
@@ -38,18 +41,12 @@ public partial class ChatControl : UserControl,ILLMChat
             return;
         }
 
-        // free openrouter models
-        // https://openrouter.ai/models?max_price=0
-        //string model = "deepseek/deepseek-r1:free";
-//        string model = "moonshotai/kimi-k2:free";
-//                string model = "deepseek/deepseek-chat-v3-0324:free";
-        //        string model = "moonshotai/kimi-dev-72b:free";
-        string model = "openai/gpt-oss-20b:free";
-        //string model = "openai/gpt-oss-20b:free";
+        Model = OpenRouterModels.openai_gpt_oss_20b_free;
 
-        chat = new OpenRouterChat(model);
 
-        Items.Add(new TextItem(model+"\n"));
+        chat = new OpenRouterChat(Model);
+
+        Items.Add( new TextItem(Model+"\n") );
         Items.Add( inputItem );
 
 
@@ -71,6 +68,13 @@ public partial class ChatControl : UserControl,ILLMChat
         inputItem.AbortButton.Click += AbortButton_Click;
         inputItem.TextBox.Focus();
         ListBox0.Loaded += ListBox0_Loaded;
+    }
+
+    public Task SetModelAsync(OpenRouterModels.Model model)
+    {
+        Model = model;
+        chat = new OpenRouterChat(Model);
+        return Task.CompletedTask;
     }
 
     private void AbortButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -120,13 +124,20 @@ public partial class ChatControl : UserControl,ILLMChat
         sb.Append("# ÉÜÅ[ÉUÇÃéøñ‚\r\n");
         sb.Append(command);
 
-        _ = Complete(sb.ToString(), cancellationTokenSource.Token);
+        _ = Complete(sb.ToString(), null,cancellationTokenSource.Token);
     }
 
-    public void LoadLogFile()
+    public async Task LoadMessagesAsync(string filePath)
+    {
+        LogFilePath = filePath;
+        await LoadMessagesAsync();
+    }
+
+
+    public async Task LoadMessagesAsync()
     {
         if (LogFilePath == null) return;
-        chat.LoadMessages(LogFilePath);
+        await chat.LoadMessagesAsync(LogFilePath);
 
         int items = Items.Count;
         for (int i = 0; i < items-2; i++)
@@ -160,28 +171,66 @@ public partial class ChatControl : UserControl,ILLMChat
 
     }
 
-    public void SaveLogFile()
+    public async Task ResetAsync()
+    {
+        await chat.ResetAsync();
+        int itemCount = Items.Count;
+        for(int i = 0; i < itemCount - 2; i++)
+        {
+            Items.RemoveAt(1);
+        }
+    }
+
+    public async Task SaveMessagesAsync(string filePath)
+    {
+        LogFilePath = filePath;
+        await SaveMessagesAsync();
+    }
+    public async Task SaveMessagesAsync()
     {
         if (LogFilePath == null) return;
-        chat.SaveMessages(LogFilePath);
+        await chat.SaveMessagesAsync(LogFilePath);
     }
 
     public bool AutoSave { set; get; } = false;
     public string? LogFilePath { set; get; } = null;
 
-    private void LoadButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private async void LoadButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        LoadLogFile();
+        try
+        {
+            await Dispatcher.UIThread.InvokeAsync(async () => await LoadMessagesAsync());
+        }
+        catch (Exception exception)
+        {
+            CodeEditor2.Controller.AppendLog(exception.Message, Avalonia.Media.Colors.Red);
+        }
     }
 
     private void ClearButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        chat.ClearChat();
+        try
+        {
+            Dispatcher.UIThread.Invoke(async () =>
+            {
+                await ResetAsync();
+            });
+        }
+        catch (Exception exception)
+        {
+            CodeEditor2.Controller.AppendLog(exception.Message, Avalonia.Media.Colors.Red);
+        }
     }
 
-    private void SaveButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private async void SaveButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        SaveLogFile();
+        try
+        {
+            await Dispatcher.UIThread.InvokeAsync(async()=>await SaveMessagesAsync());
+        }catch(Exception exception)
+        {
+            CodeEditor2.Controller.AppendLog(exception.Message,Avalonia.Media.Colors.Red);
+        }
     }
 
     private void SendButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -189,7 +238,7 @@ public partial class ChatControl : UserControl,ILLMChat
         string? command = inputItem.TextBox.Text;
         if(command == null) return;
 
-        _ = Complete(command,cancellationTokenSource.Token);
+        _ = Complete(command,null,cancellationTokenSource.Token);
         inputItem.TextBox.Focus();
     }
 
@@ -237,7 +286,7 @@ public partial class ChatControl : UserControl,ILLMChat
 
 
 
-    private async Task Complete(string command,CancellationToken cancellation)
+    private async Task Complete(string command, IList<AITool>? tools, CancellationToken cancellation)
     {
         string? input = inputItem.TextBox.Text;
         if(input == null) return;
@@ -280,31 +329,37 @@ public partial class ChatControl : UserControl,ILLMChat
             bool timerActivate = true; // timer activate flag, timer will be stopped when first result is returned
 
             // execute chat command
-            await foreach (string ret in chat.GetAsyncCollectionChatResult(command, cancellation))
+            try
             {
-                if (timerActivate & ret != "")
+                await foreach (string ret in chat.GetAsyncCollectionChatResult(command,tools, cancellation))
                 {
-                    cts.Cancel();
-                    await resultItem.SetText("");
-                    timerActivate = false;
-                }
-                await resultItem.AppendText(ret);
-                if (autoScroll)
-                {
-                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    if (timerActivate & ret != "")
                     {
-                        ListBox0.ScrollIntoView(inputItem);
-                    });
+                        cts.Cancel();
+                        await resultItem.SetText("");
+                        timerActivate = false;
+                    }
+                    await resultItem.AppendText(ret);
+                    if (autoScroll)
+                    {
+                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            ListBox0.ScrollIntoView(inputItem);
+                        });
+                    }
                 }
+            }catch(Exception ex)
+            {
+                CodeEditor2.Controller.AppendLog(ex.Message, Avalonia.Media.Colors.Red);
             }
             stopwatch.Stop();
             await displayTimerTask;
 
             // change color to complete color
-            await Dispatcher.UIThread.InvokeAsync(() =>
+            await Dispatcher.UIThread.InvokeAsync(async () =>
             {
                 resultItem.TextColor = completeColor;
-                SaveLogFile();
+                await SaveMessagesAsync();
             });
         }catch(Exception ex)
         {
@@ -317,17 +372,17 @@ public partial class ChatControl : UserControl,ILLMChat
         }
     }
 
-    public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, [EnumeratorCancellation] CancellationToken cancellation)
+    public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, IList<AITool>? tools, [EnumeratorCancellation] CancellationToken cancellation)
     {
         inputItem.TextBox.Text = command;
-        await Complete(command,cancellation);
+        await Complete(command,tools,cancellation);
         if(lastResultItem == null) yield break;
         yield return lastResultItem.Text;
     }
-    public async Task<string> GetAsyncChatResult(string command, CancellationToken cancellationToken)
+    public async Task<string> GetAsyncChatResult(string command, IList<AITool>? tools, CancellationToken cancellationToken)
     {
         StringBuilder sb = new StringBuilder();
-        await foreach (string ret in GetAsyncCollectionChatResult(command, cancellationToken))
+        await foreach (string ret in GetAsyncCollectionChatResult(command, tools,cancellationToken))
         {
             sb.Append(ret);
         }

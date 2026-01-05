@@ -1,34 +1,45 @@
-﻿using DynamicData;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.ClientModel;
-//using OpenAI.Chat;
-using System.Threading;
-using System.Runtime.CompilerServices;
-using Svg;
+﻿using Avalonia.Collections;
 using Avalonia.Threading;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.ClientModel.Primitives;
-using System.IO;
-using Microsoft.ML;
-using Microsoft.ML.Data;
-using System.Runtime.InteropServices;
+using DynamicData;
 using FaissNet;
 using Microsoft.Extensions.AI;
-using static CodeEditor2.CodeEditor.CodeDocument;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.ML;
+using Microsoft.ML.Data;
+using OpenAI.Realtime;
+using Svg;
+using System;
+using System.ClientModel;
+using System.ClientModel.Primitives;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+//using OpenAI.Chat;
+using System.Threading;
+using System.Threading.Tasks;
+using static CodeEditor2.CodeEditor.CodeDocument;
+using static pluginAi.OpenRouterModels;
 //using OpenAI;
 
 namespace pluginAi
 {
     public class OpenRouterChat: ILLMChat
     {
+
+        public OpenRouterChat(OpenRouterModels.Model model)
+        {
+            initialize(model);
+        }
+
         private Microsoft.Extensions.AI.IChatClient client;
-        public OpenRouterChat(string model)
+
+        private void initialize(OpenRouterModels.Model model)
         {
             // create OpenAI.Chat.ChatClient using OpenAi.net
             string apiKey;
@@ -46,7 +57,7 @@ namespace pluginAi
             };
 
             OpenAI.Chat.ChatClient openAiClient = new OpenAI.Chat.ChatClient(
-                model: model,
+                model: model.Name,
                 new ApiKeyCredential(apiKey),
                 openAIClientOptions
                 );
@@ -61,33 +72,47 @@ namespace pluginAi
                .Build();
         }
 
-        string GetCurrentWeather(string place)
-        {
-            return Random.Shared.NextDouble() > 0.5 ? "It's sunny" : "It's raining";
-        }
 
+        public Task SetModelAsync(OpenRouterModels.Model model)
+        {
+            initialize(model);
+            return Task.CompletedTask;
+        }
 
         List<Microsoft.Extensions.AI.ChatMessage> chatMessages = new List<Microsoft.Extensions.AI.ChatMessage>();
 
-        public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, [EnumeratorCancellation] CancellationToken cancellationToken)
+        public Task ResetAsync()
         {
-            ChatOptions options = new() { Tools = [
-                AIFunctionFactory.Create(GetCurrentWeather)] };
+            chatMessages.Clear();
+            return Task.CompletedTask;
+        }
+        public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command,IList<AITool>? tools, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            ChatOptions options = new ChatOptions();
+            if (tools != null)
+            {
+                options = new()
+                {
+                    Tools = tools
+                };
+            }
             chatMessages.Add(new(ChatRole.User, command));
 
             List<ChatResponseUpdate> updates = [];
-            await foreach (ChatResponseUpdate update in
-                client.GetStreamingResponseAsync(chatMessages,options))
+
+            await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(chatMessages, options))
             {
                 yield return update.Text;
                 updates.Add(update);
             }
+
             chatMessages.AddMessages(updates);
         }
-        public async Task<string> GetAsyncChatResult(string command, CancellationToken cancellationToken)
+
+        public async Task<string> GetAsyncChatResult(string command, IList<AITool>? tools, CancellationToken cancellationToken)
         {
             StringBuilder sb = new StringBuilder();
-            await foreach (string ret in GetAsyncCollectionChatResult(command, cancellationToken))
+            await foreach (string ret in GetAsyncCollectionChatResult(command, tools, cancellationToken))
             {
                 sb.Append(ret);
             }
@@ -99,15 +124,15 @@ namespace pluginAi
             return chatMessages;
         }
 
-        public void SaveMessages( string filePath)
+        public async Task SaveMessagesAsync( string filePath)
         {
             try
             {
-                BinaryData serializedData = SerializeMessages(chatMessages);
-                using (System.IO.StreamWriter sw = new System.IO.StreamWriter(filePath))
-                {
-                    sw.Write(serializedData);
-                }
+
+                string serializedData = SerializeMessages(chatMessages);
+                await using var fs = File.OpenWrite(filePath);
+                using var sw = new StreamWriter(fs);
+                await sw.WriteAsync(serializedData);
             }
             catch (Exception ex)
             {
@@ -116,15 +141,15 @@ namespace pluginAi
         }
 
         
-        public void LoadMessages(string filePath)
+        public async Task LoadMessagesAsync(string filePath)
         {
             chatMessages.Clear();
             try
-            { 
-                using(System.IO.StreamReader sr = new System.IO.StreamReader(filePath))
-                {
-                    chatMessages = DeserializeMessages(BinaryData.FromString(sr.ReadToEnd())).ToList();
-                }
+            {
+                await using var fs = File.OpenRead(filePath); 
+                using var sr = new StreamReader(fs); 
+                string text = await sr.ReadToEndAsync(); 
+                chatMessages = DeserializeMessages(BinaryData.FromString(text)).ToList();
             }
             catch (Exception ex)
             {
@@ -146,13 +171,9 @@ namespace pluginAi
             }
 
         }
-        public static BinaryData SerializeMessages(IEnumerable<ChatMessage> messages)
+        public static string SerializeMessages(IEnumerable<ChatMessage> messages)
         {
-            return BinaryData.FromString(JsonSerializer.Serialize(messages));
-        }
-        public void ClearChat()
-        {
-            chatMessages.Clear();
+            return JsonSerializer.Serialize(messages);
         }
     }
 }

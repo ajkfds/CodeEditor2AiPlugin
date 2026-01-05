@@ -66,6 +66,8 @@ namespace pluginAi
 
             CodeEditor2.Controller.Tabs.AddItem(chatTab);
 
+            CodeEditor2.Data.TextFile.CustomizeTooltem += AddSnippets;
+
             //ContextMenu contextMenu = Controller.NavigatePanel.GetContextMenu();
             //{
             //    //MenuItem menuItem_RunSimulation = CodeEditor2.Global.CreateMenuItem("Run Simulation", "menuItem_RunSimulation","play",Avalonia.Media.Colors.Red);
@@ -82,5 +84,9 @@ namespace pluginAi
         internal static Avalonia.Controls.TabItem? chatTab;
         internal static pluginAi.Views.ChatControl? chatControl;
 
+        private void AddSnippets(List<CodeEditor2.CodeEditor.PopupMenu.ToolItem> toolItems)
+        {
+            toolItems.Add(new Snippet.CleanEnglishSnippet());
+        }
     }
 }

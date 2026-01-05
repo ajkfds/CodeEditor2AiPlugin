@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.AI;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,7 +10,12 @@ namespace pluginAi
 {
     public interface ILLMChat
     {
-        IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, CancellationToken cancellation);
-        Task<string> GetAsyncChatResult(string command, CancellationToken cancellationToken);
+        IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, IList<AITool>? tools, CancellationToken cancellation);
+        Task<string> GetAsyncChatResult(string command, IList<AITool>? tools, CancellationToken cancellationToken);
+
+        Task SaveMessagesAsync(string filePath);
+        Task LoadMessagesAsync(string filePath);
+
+        Task ResetAsync();
     }
 }

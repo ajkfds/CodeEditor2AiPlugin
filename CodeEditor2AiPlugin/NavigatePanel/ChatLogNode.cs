@@ -31,7 +31,7 @@ namespace pluginAi.NavigatePanel
 
 
                 Plugin.chatControl.LogFilePath = ChatLogFile.AbsolutePath;
-                Plugin.chatControl.LoadLogFile();
+                await Plugin.chatControl.LoadMessagesAsync();
                 CodeEditor2.Controller.Tabs.SelectTab(Plugin.chatTab);
 
                 await UpdateAsync();
