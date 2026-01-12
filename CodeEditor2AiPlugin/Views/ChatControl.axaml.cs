@@ -46,7 +46,7 @@ public partial class ChatControl : UserControl,ILLMChatFrontEnd
 
         chat = new OpenRouterChat(Model,false);
 
-        Items.Add( new TextItem(Model+"\n") );
+        Items.Add( new TextItem(Model.Caption+"\n") );
         Items.Add( inputItem );
 
 
@@ -86,29 +86,65 @@ public partial class ChatControl : UserControl,ILLMChatFrontEnd
     }
 
     private ScrollViewer scrollViewer;
+    private bool _isInternalScrolling = false; // システムによるスクロール中かどうかのフラグ
+
     private void ListBox0_Loaded(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         var scrollViewer = ListBox0.FindDescendantOfType<ScrollViewer>();
         if (scrollViewer == null) throw new Exception();
-        scrollViewer.ScrollChanged += ScrollViewer_ScrollChanged;
+
+        scrollViewer = ListBox0.FindDescendantOfType<ScrollViewer>();
+        if (scrollViewer == null) return;
+
+        //scrollViewer.GetObservable(ScrollViewer.ExtentProperty).Subscribe(_ =>
+        //{
+        //    if (autoScroll)
+        //    {
+        //        // Extentが変わった（テキストが増えた）瞬間にOffsetを更新
+        //        scrollViewer.Offset = new Vector(scrollViewer.Offset.X, double.MaxValue);
+        //    }
+        //});
+
+        // 1. 高さ（中身）が変わった時の処理
+        scrollViewer.GetObservable(ScrollViewer.ExtentProperty).Subscribe(_ =>
+        {
+            if (autoScroll)
+            {
+                _isInternalScrolling = true; // 「今からシステムが動かします」という合図
+                scrollViewer.Offset = new Vector(scrollViewer.Offset.X, double.MaxValue);
+
+                // 描画サイクルが終わる頃にフラグを下ろす
+                Dispatcher.UIThread.Post(() => _isInternalScrolling = false, DispatcherPriority.Loaded);
+            }
+        });
+
+        // 2. スクロール位置が変わった時の処理
+        scrollViewer.ScrollChanged += (s, ev) =>
+        {
+            // システムによるスクロール（Extent変化による移動）なら、手動判定をスルーする
+            if (_isInternalScrolling) return;
+
+            // 垂直方向の移動がない場合は無視
+//            if (Math.Abs(ev.ExtentDelta.Length) < 0.1) return;
+
+            // 「一番下に近いか」を判定
+            const double threshold = 30; // 少し余裕を持たせる
+            bool isAtBottom = scrollViewer.Offset.Y >= (scrollViewer.Extent.Height - scrollViewer.Viewport.Height - threshold);
+
+            if (!isAtBottom)
+            {
+                // ユーザーが手動で上に上げた
+                autoScroll = false;
+            }
+            else
+            {
+                // ユーザーが自力で一番下まで戻した
+                autoScroll = true;
+            }
+        };
         this.scrollViewer= scrollViewer;
     }
 
-    private void ScrollViewer_ScrollChanged(object? sender, ScrollChangedEventArgs e)
-    {
-        // スクロール可能な高さの閾値（例: 100px手前でトリガー）
-        const double triggerThreshold = 100;
-        var triggerPosition = scrollViewer.Extent.Height - scrollViewer.Viewport.Height - triggerThreshold;
-
-        if (scrollViewer.Offset.Y >= triggerPosition)
-        {
-            autoScroll = true;
-        }
-        else
-        {
-            autoScroll = false;
-        }
-    }
 
     private bool autoScroll { get; set; } = true;
 
@@ -258,30 +294,6 @@ public partial class ChatControl : UserControl,ILLMChatFrontEnd
         if (sender is not TextBox textBox) return;
         if (textBox.Text == null) return;
 
-        // expand textbox height
-        UpdateTextBoxHeight(textBox);
-    }
-    private void UpdateTextBoxHeight(TextBox textBox)
-    {
-        if (textBox == null || !textBox.IsMeasureValid)
-            return;
-
-        var padding = textBox.Padding;
-        var borderThickness = textBox.BorderThickness;
-        double availableWidth = textBox.Bounds.Width - padding.Left - padding.Right - borderThickness.Left - borderThickness.Right;
-
-        if (availableWidth <= 0)
-            return;
-
-        var typeface = new Typeface(textBox.FontFamily, textBox.FontStyle, textBox.FontWeight);
-        var formattedText = new Avalonia.Media.FormattedText(textBox.Text, System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight, typeface, textBox.FontSize, textBox.Foreground);
-
-        double textHeight = formattedText.Height;//.Bounds.Height;
-        double requiredHeight = textHeight + padding.Top + padding.Bottom + borderThickness.Top + borderThickness.Bottom;
-        requiredHeight = Math.Max(requiredHeight, textBox.FontSize + padding.Top + padding.Bottom + borderThickness.Top + borderThickness.Bottom);
-
-        if (Math.Abs(textBox.Height - requiredHeight) > 0.1)
-            textBox.Height = requiredHeight;
     }
 
     OpenRouterChat chat;
@@ -351,13 +363,35 @@ public partial class ChatControl : UserControl,ILLMChatFrontEnd
                         timerActivate = false;
                     }
                     await resultItem.AppendText(ret);
+
+                    //if (autoScroll)
+                    //{
+                    //    // 優先度を下げて実行し、描画を優先させる
+                    //    _ = Dispatcher.UIThread.InvokeAsync(() =>
+                    //    {
+                    //        ListBox0.ScrollIntoView(inputItem);
+                    //    }, DispatcherPriority.Background);
+                    //}
+
                     if (autoScroll)
                     {
-                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        // 描画スレッドで即座にレイアウトを確定させる
+                        Dispatcher.UIThread.Post(() =>
                         {
-                            ListBox0.ScrollIntoView(inputItem);
-                        });
+                            // 1. レイアウトを強制更新（これで新しいテキスト分の高さが確定する）
+                            ListBox0.UpdateLayout();
+
+                            // 2. 高さが確定した直後にスクロール
+                            scrollViewer?.ScrollToEnd();
+                        }, DispatcherPriority.Render); // Render優先度で即座に反映
                     }
+                    //if (autoScroll)
+                    //{
+                    //    await Dispatcher.UIThread.InvokeAsync(() =>
+                    //    {
+                    //        ListBox0.ScrollIntoView(inputItem);
+                    //    });
+                    //}
                 }
             }catch(Exception ex)
             {
@@ -410,9 +444,10 @@ public partial class ChatControl : UserControl,ILLMChatFrontEnd
         {
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
             Margin = new Thickness(10, 5, 10, 5),
-            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch,// .Top,
             AcceptsReturn = true,
-            IsReadOnly = true
+            IsReadOnly = true,
+            MinHeight = 30
         };
 
         public TextItem(string text,Avalonia.Media.Color textColor): this(text)
@@ -539,6 +574,16 @@ public partial class ChatControl : UserControl,ILLMChatFrontEnd
                 SendButton.Background = new Avalonia.Media.SolidColorBrush(new Avalonia.Media.Color(255, 0, 120, 212));
                 await Task.Delay(100);
                 SendButton.Background = new Avalonia.Media.SolidColorBrush(new Avalonia.Media.Color(255, 20, 20, 20));
+            };
+
+            TextBox.KeyDown += (sender, e) =>
+            {
+                if (e.Key == Key.Left || e.Key == Key.Right)
+                {
+                    // テキストボックス内でのカーソル移動のみを許容し、
+                    // 親のListBoxへのイベント伝播（フォーカス移動）を止める
+                    e.Handled = true;
+                }
             };
         }
 
