@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace pluginAi
 {
-    public interface ILLMChat
+    public interface ILLMChatFrontEnd
     {
         IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, IList<AITool>? tools, CancellationToken cancellation);
         Task<string> GetAsyncChatResult(string command, IList<AITool>? tools, CancellationToken cancellationToken);

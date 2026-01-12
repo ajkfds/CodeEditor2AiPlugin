@@ -24,14 +24,14 @@ namespace pluginAi.NavigatePanel
         {
             try
             {
-                if (pluginAi.Plugin.chatControl == null) throw new Exception();
+                if (pluginAi.Plugin.ChatTabControl == null) throw new Exception();
                 if (pluginAi.Plugin.chatTab == null) throw new Exception();
 
                 if (ChatLogFile == null) return;
 
 
-                Plugin.chatControl.LogFilePath = ChatLogFile.AbsolutePath;
-                await Plugin.chatControl.LoadMessagesAsync();
+                Plugin.ChatTabControl.LogFilePath = ChatLogFile.AbsolutePath;
+                await Plugin.ChatTabControl.LoadMessagesAsync();
                 CodeEditor2.Controller.Tabs.SelectTab(Plugin.chatTab);
 
                 await UpdateAsync();

@@ -9,7 +9,7 @@ namespace pluginAi
 {
     public class Plugin : CodeEditor2Plugin.IPlugin
     {
-        public static string StaticID = "AIChat";
+        public static string StaticID = "AIPlugin";
         public string Id { get { return StaticID; } }
 
         public bool Register()
@@ -18,6 +18,14 @@ namespace pluginAi
             {
                 FileTypes.ChatLogFile fileType = new FileTypes.ChatLogFile();
                 CodeEditor2.Global.FileTypes.Add(fileType.ID, fileType);
+            }
+
+            string apiKey;
+            using (System.IO.StreamReader sw = new System.IO.StreamReader(@"C:\ApiKey\openrouter.txt"))
+            {
+                apiKey = sw.ReadToEnd().Trim();
+                if (apiKey == "") throw new Exception();
+                OpenRouterChat.ApiKey = apiKey;
             }
 
             //if (!CodeEditor2.Global.ProjectPropertyDeserializers.ContainsKey(Id))
@@ -53,7 +61,7 @@ namespace pluginAi
                 //newMenuItem.Click += MenuItem_CreateSnapShot_Click;
             }
 
-            chatControl = new Views.ChatControl();
+            ChatTabControl = new Views.ChatControl();
             chatTab = new TabItem()
             {
                 Header = "AI Chat",
@@ -61,7 +69,7 @@ namespace pluginAi
                 FontSize = 12,
                 //                Icon = new Avalonia.Media.Imaging.Bitmap("CodeEditor2AiPlugin/Assets/Icons/chat.svg"),
 
-                Content = chatControl
+                Content = ChatTabControl
             };
 
             CodeEditor2.Controller.Tabs.AddItem(chatTab);
@@ -82,7 +90,7 @@ namespace pluginAi
             return true;
         }
         internal static Avalonia.Controls.TabItem? chatTab;
-        internal static pluginAi.Views.ChatControl? chatControl;
+        public static pluginAi.Views.ChatControl? ChatTabControl;
 
         private void AddSnippets(List<CodeEditor2.CodeEditor.PopupMenu.ToolItem> toolItems)
         {

@@ -29,24 +29,30 @@ using static pluginAi.OpenRouterModels;
 
 namespace pluginAi
 {
-    public class OpenRouterChat: ILLMChat
+    public class OpenRouterChat: ILLMChatFrontEnd
     {
 
-        public OpenRouterChat(OpenRouterModels.Model model)
+        public OpenRouterChat(OpenRouterModels.Model model, bool enableFunctionCalling)
         {
-            initialize(model);
+            initialize(model,enableFunctionCalling);
         }
 
         private Microsoft.Extensions.AI.IChatClient client;
 
-        private void initialize(OpenRouterModels.Model model)
+        public static string? ApiKey;
+        private void initialize(OpenRouterModels.Model model,bool enableFunctionCalling)
         {
             // create OpenAI.Chat.ChatClient using OpenAi.net
-            string apiKey;
-            using (System.IO.StreamReader sw = new System.IO.StreamReader(@"C:\ApiKey\openrouter.txt"))
+            //string apiKey;
+            //using (System.IO.StreamReader sw = new System.IO.StreamReader(@"C:\ApiKey\openrouter.txt"))
+            //{
+            //    apiKey = sw.ReadToEnd().Trim();
+            //    if (apiKey == "") throw new Exception();
+            //}
+            if(ApiKey == null)
             {
-                apiKey = sw.ReadToEnd().Trim();
-                if (apiKey == "") throw new Exception();
+                CodeEditor2.Controller.AppendLog("Set API Key for OpenRouter",Avalonia.Media.Colors.Red);
+                return;
             }
 
             OpenAI.OpenAIClientOptions openAIClientOptions = new OpenAI.OpenAIClientOptions()
@@ -58,7 +64,7 @@ namespace pluginAi
 
             OpenAI.Chat.ChatClient openAiClient = new OpenAI.Chat.ChatClient(
                 model: model.Name,
-                new ApiKeyCredential(apiKey),
+                new ApiKeyCredential(ApiKey),
                 openAIClientOptions
                 );
 
@@ -66,16 +72,25 @@ namespace pluginAi
             client = Microsoft.Extensions.AI.OpenAIClientExtensions.AsIChatClient(openAiClient);
 
             //use user function
-            client = ChatClientBuilderChatClientExtensions
-               .AsBuilder(client)
-               .UseFunctionInvocation()
-               .Build();
+            if (enableFunctionCalling)
+            {
+                client = ChatClientBuilderChatClientExtensions
+                   .AsBuilder(client)
+                   .UseFunctionInvocation()
+                   .Build();
+            }
+            else
+            {
+                client = ChatClientBuilderChatClientExtensions
+                   .AsBuilder(client)
+                   .Build();
+            }
         }
 
 
-        public Task SetModelAsync(OpenRouterModels.Model model)
+        public Task SetModelAsync(OpenRouterModels.Model model,bool enableFunctionCalling)
         {
-            initialize(model);
+            initialize(model, enableFunctionCalling);
             return Task.CompletedTask;
         }
 
@@ -102,6 +117,26 @@ namespace pluginAi
 
             await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(chatMessages, options))
             {
+                //foreach (var content in update.Contents)
+                //{
+                //    // A. 関数呼び出しの発生を検知
+                //    if (content is FunctionCallContent call)
+                //    {
+                //        Console.WriteLine($"\n[Function Call] {call.Name} が呼び出されました。引数: {call.Arguments}");
+                //    }
+
+                //    // B. 関数の実行結果を検知
+                //    if (content is FunctionResultContent result)
+                //    {
+                //        Console.WriteLine($"\n[Function Result] 結果が戻りました: {result.Result}");
+                //    }
+
+                //    // C. 通常のテキスト回答（逐次表示）
+                //    if (content is TextContent text)
+                //    {
+                //        Console.Write(text.Text);
+                //    }
+                //}
                 yield return update.Text;
                 updates.Add(update);
             }

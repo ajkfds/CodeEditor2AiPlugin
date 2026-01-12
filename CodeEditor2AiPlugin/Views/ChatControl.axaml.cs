@@ -25,7 +25,7 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace pluginAi.Views;
 
-public partial class ChatControl : UserControl,ILLMChat
+public partial class ChatControl : UserControl,ILLMChatFrontEnd
 {
     public ObservableCollection<ChatItem> Items { get; set; } = new ObservableCollection<ChatItem>();
 
@@ -44,7 +44,7 @@ public partial class ChatControl : UserControl,ILLMChat
         Model = OpenRouterModels.openai_gpt_oss_20b_free;
 
 
-        chat = new OpenRouterChat(Model);
+        chat = new OpenRouterChat(Model,false);
 
         Items.Add( new TextItem(Model+"\n") );
         Items.Add( inputItem );
@@ -68,12 +68,15 @@ public partial class ChatControl : UserControl,ILLMChat
         inputItem.AbortButton.Click += AbortButton_Click;
         inputItem.TextBox.Focus();
         ListBox0.Loaded += ListBox0_Loaded;
+
+
     }
 
-    public Task SetModelAsync(OpenRouterModels.Model model)
+
+    public Task SetModelAsync(OpenRouterModels.Model model,bool enableFunctionCalling)
     {
         Model = model;
-        chat = new OpenRouterChat(Model);
+        chat = new OpenRouterChat(Model, enableFunctionCalling);
         return Task.CompletedTask;
     }
 
@@ -238,9 +241,17 @@ public partial class ChatControl : UserControl,ILLMChat
         string? command = inputItem.TextBox.Text;
         if(command == null) return;
 
+        if(OverrideSend != null)
+        {
+            OverrideSend(command);
+            return;
+        }
+
         _ = Complete(command,null,cancellationTokenSource.Token);
         inputItem.TextBox.Focus();
     }
+
+    public Action<string>? OverrideSend;
 
     private void TextBox_TextChanged(object? sender, TextChangedEventArgs e)
     {

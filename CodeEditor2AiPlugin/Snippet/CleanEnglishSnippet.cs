@@ -1,8 +1,6 @@
 ﻿using Avalonia.Input;
 using Avalonia.Threading;
 using CodeEditor2.Views;
-using pluginAi.LLMWapper;
-using pluginAi.LLMWrapper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,9 +20,9 @@ namespace pluginAi.Snippet
                     );
         }
 
-        private static LightLLM? LLM;
+        private static LLMChat? LLM;
 
-        private static Func<LightLLM>? GetLLM = null;
+        private static Func<LLMChat>? GetLLM = null;
 
 
         private CodeEditor2.CodeEditor.CodeDocument? document;
@@ -33,7 +31,7 @@ namespace pluginAi.Snippet
         {
             if(GetLLM == null)
             {
-                LLM = new LightGptOssFree();
+                LLM = new LLMChat(new OpenRouterChat(OpenRouterModels.openai_gpt_oss_20b,false));
             }
             else
             {
@@ -124,10 +122,13 @@ namespace pluginAi.Snippet
                 {
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        document.Replace(start, end, 0, responce);
+                        document.Replace(start, end-start, 0, responce);
                     });
                 }
-                CodeEditor2.Controller.CodeEditor.AbortInteractiveSnippet();
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    CodeEditor2.Controller.CodeEditor.AbortInteractiveSnippet();
+                });
             }
             catch (Exception ex)
             {
