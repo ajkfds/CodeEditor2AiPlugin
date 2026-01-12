@@ -22,7 +22,7 @@ namespace pluginAi.Snippet
 
         private static LLMChat? LLM;
 
-        private static Func<LLMChat>? GetLLM = null;
+        public static Func<LLMChat>? GetLLM = null;
 
 
         private CodeEditor2.CodeEditor.CodeDocument? document;
@@ -31,7 +31,9 @@ namespace pluginAi.Snippet
         {
             if(GetLLM == null)
             {
-                LLM = new LLMChat(new OpenRouterChat(OpenRouterModels.openai_gpt_oss_20b,false));
+                CodeEditor2.Controller.CodeEditor.AbortInteractiveSnippet();
+                return;
+//                LLM = new LLMChat(new OpenRouterChat(OpenRouterModels.openai_gpt_oss_20b,false));
             }
             else
             {
