@@ -29,17 +29,20 @@ using static pluginAi.OpenRouterModels;
 
 namespace pluginAi
 {
-    public class OpenRouterChat: ILLMChatFrontEnd
+    public class OpenRouterChat: CodeEditor2.LLM.ILLMChatFrontEnd
     {
 
         public OpenRouterChat(OpenRouterModels.Model model, bool enableFunctionCalling)
         {
             initialize(model,enableFunctionCalling);
+            this.enableFunctionCalling = enableFunctionCalling;
         }
 
         private Microsoft.Extensions.AI.IChatClient client;
 
         public static string? ApiKey;
+
+        private bool enableFunctionCalling;
         private void initialize(OpenRouterModels.Model model,bool enableFunctionCalling)
         {
             // create OpenAI.Chat.ChatClient using OpenAi.net
@@ -104,7 +107,7 @@ namespace pluginAi
         public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command,IList<AITool>? tools, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             ChatOptions options = new ChatOptions();
-            if (tools != null)
+            if (tools != null && enableFunctionCalling)
             {
                 options = new()
                 {

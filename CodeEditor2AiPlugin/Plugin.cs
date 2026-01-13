@@ -61,7 +61,7 @@ namespace pluginAi
                 //newMenuItem.Click += MenuItem_CreateSnapShot_Click;
             }
 
-            ChatTabControl = new Views.ChatControl();
+            ChatTabControl = new CodeEditor2.LLM.ChatControl();
             chatTab = new TabItem()
             {
                 Header = "AI Chat",
@@ -90,7 +90,7 @@ namespace pluginAi
             return true;
         }
         internal static Avalonia.Controls.TabItem? chatTab;
-        public static pluginAi.Views.ChatControl? ChatTabControl;
+        public static CodeEditor2.LLM.ChatControl? ChatTabControl;
 
         private void AddSnippets(List<CodeEditor2.CodeEditor.PopupMenu.ToolItem> toolItems)
         {

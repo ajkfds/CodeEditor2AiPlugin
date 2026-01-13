@@ -21,7 +21,7 @@ namespace pluginAi
 {
     public class LLMChat
     {
-        public LLMChat(ILLMChatFrontEnd chatClient)
+        public LLMChat(CodeEditor2.LLM.ILLMChatFrontEnd chatClient)
         {
             chat = chatClient;// new OpenRouterChat(OpenRouterModels.openai_gpt_oss_20b);
         }
@@ -30,7 +30,7 @@ namespace pluginAi
             LLMChat -(ILLMChatFrontEnd)-+-> ChatControl -+--> OpenRouterChat -->  Microsoft.Extentions.AI.ChatClient
                                         +----------------+
         */
-        private ILLMChatFrontEnd chat { init; get; }
+        private CodeEditor2.LLM.ILLMChatFrontEnd chat { init; get; }
 
         /// <summary>
         /// enable debug output
@@ -97,10 +97,6 @@ namespace pluginAi
         public async Task ResetAsync(CancellationToken cancellationToken)
         {
             await chat.ResetAsync();
-            if(chat is ChatControl)
-            {
-                ((ChatControl)chat).OverrideSend = OverrideSend;
-            }
 
             string basePrompt = BasePrompt;
             StringBuilder sb = new StringBuilder();

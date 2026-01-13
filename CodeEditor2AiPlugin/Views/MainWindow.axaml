@@ -10,11 +10,11 @@
         Icon="/Assets/avalonia-logo.ico"
         Title="ChatTest">
 	
-		<Grid ColumnDefinitions="200, 4, *, 4" Grid.Row="0">
+		<!--<Grid ColumnDefinitions="200, 4, *, 4" Grid.Row="0">
 			<ajkContols:TreeControl  Grid.Column="0"/>
 		<GridSplitter Grid.Column="2" Name="SplitterColumn1" ResizeDirection="Columns"/>
 			<views:ChatControl Grid.Column="2"/>
-		</Grid>
+		</Grid>-->
 
 
 </Window>
