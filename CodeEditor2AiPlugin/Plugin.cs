@@ -60,7 +60,7 @@ namespace pluginAi
                 //menuItem.Items.Add(newMenuItem);
                 //newMenuItem.Click += MenuItem_CreateSnapShot_Click;
             }
-
+            /*
             ChatTabControl = new CodeEditor2.LLM.ChatControl();
             chatTab = new TabItem()
             {
@@ -73,7 +73,7 @@ namespace pluginAi
             };
 
             CodeEditor2.Controller.Tabs.AddItem(chatTab);
-
+            */
             CodeEditor2.Data.TextFile.CustomizeTooltem += AddSnippets;
 
             //ContextMenu contextMenu = Controller.NavigatePanel.GetContextMenu();
