@@ -9,7 +9,7 @@ namespace pluginAi.Data
 {
     public class ChatLogFile : CodeEditor2.Data.File
     {
-        public static ChatLogFile Create(string relativePath, Project project)
+        public static Task<ChatLogFile> CreateAsync(string relativePath, Project project)
         {
             string name;
             if (relativePath.Contains(System.IO.Path.DirectorySeparatorChar))
@@ -27,7 +27,7 @@ namespace pluginAi.Data
                 Name = name
             };
 
-            return chatLogFile;
+            return Task.FromResult(chatLogFile);
         }
 
         protected override CodeEditor2.NavigatePanel.NavigatePanelNode CreateNode()
