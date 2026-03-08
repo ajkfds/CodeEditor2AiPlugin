@@ -1,4 +1,4 @@
-﻿using Avalonia.Input;
+using Avalonia.Input;
 using Avalonia.Threading;
 using CodeEditor2.Views;
 using System;

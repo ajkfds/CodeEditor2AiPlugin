@@ -1,4 +1,4 @@
-﻿namespace pluginAi.ViewModels;
+namespace pluginAi.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
