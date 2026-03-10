@@ -111,7 +111,7 @@ namespace pluginAi.Snippet
                 string text = document.CreateString(start, end - start);
 
                 StringBuilder sb = new StringBuilder();
-                sb.Append("以下の文章を正しい英語にして、変換後の英語の文章のみを回答して。\n");
+                sb.Append("莉･荳九・譁・ｫ繧呈ｭ｣縺励＞闍ｱ隱槭↓縺励※縲∝､画鋤蠕後・闍ｱ隱槭・譁・ｫ縺ｮ縺ｿ繧貞屓遲斐＠縺ｦ縲・n");
                 sb.Append("\n");
                 sb.Append("---\n");
                 sb.Append(text);

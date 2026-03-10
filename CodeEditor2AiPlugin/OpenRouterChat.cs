@@ -122,19 +122,19 @@ namespace pluginAi
             {
                 //foreach (var content in update.Contents)
                 //{
-                //    // A. 関数呼び出しの発生を検知
+                //    // A. 髢｢謨ｰ蜻ｼ縺ｳ蜃ｺ縺励・逋ｺ逕溘ｒ讀懃衍
                 //    if (content is FunctionCallContent call)
                 //    {
-                //        Console.WriteLine($"\n[Function Call] {call.Name} が呼び出されました。引数: {call.Arguments}");
+                //        Console.WriteLine($"\n[Function Call] {call.Name} 縺悟他縺ｳ蜃ｺ縺輔ｌ縺ｾ縺励◆縲ょｼ墓焚: {call.Arguments}");
                 //    }
 
-                //    // B. 関数の実行結果を検知
+                //    // B. 髢｢謨ｰ縺ｮ螳溯｡檎ｵ先棡繧呈､懃衍
                 //    if (content is FunctionResultContent result)
                 //    {
-                //        Console.WriteLine($"\n[Function Result] 結果が戻りました: {result.Result}");
+                //        Console.WriteLine($"\n[Function Result] 邨先棡縺梧綾繧翫∪縺励◆: {result.Result}");
                 //    }
 
-                //    // C. 通常のテキスト回答（逐次表示）
+                //    // C. 騾壼ｸｸ縺ｮ繝・く繧ｹ繝亥屓遲費ｼ磯先ｬ｡陦ｨ遉ｺ・・
                 //    if (content is TextContent text)
                 //    {
                 //        Console.Write(text.Text);
