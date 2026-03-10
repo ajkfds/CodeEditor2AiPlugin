@@ -49,6 +49,23 @@ namespace pluginAi.NavigatePanel
             {
                 return Task.CompletedTask;
             }
+            if (!Dispatcher.UIThread.CheckAccess())
+            {
+                Dispatcher.UIThread.Post(
+                        new Action(() =>
+                        {
+                            try
+                            {
+                                UpdateVisual();
+                            }
+                            catch (Exception ex)
+                            {
+                                CodeEditor2.Controller.AppendLog("#Exception " + ex.Message, Avalonia.Media.Colors.Red);
+                            }
+                        })
+                    );
+                return Task.CompletedTask;
+            }
             UpdateVisual();
             return Task.CompletedTask;
         }

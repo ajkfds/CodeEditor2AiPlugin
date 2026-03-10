@@ -27,13 +27,12 @@ namespace pluginAi.Snippet
 
         private CodeEditor2.CodeEditor.CodeDocument? document;
 
-        public override void Apply()
+        public override async System.Threading.Tasks.Task ApplyAsync()
         {
             if(GetLLM == null)
             {
                 CodeEditor2.Controller.CodeEditor.AbortInteractiveSnippet();
                 return;
-//                LLM = new LLMChat(new OpenRouterChat(OpenRouterModels.openai_gpt_oss_20b,false));
             }
             else
             {
@@ -41,13 +40,13 @@ namespace pluginAi.Snippet
             }
 
 
-            CodeEditor2.Data.TextFile? file = CodeEditor2.Controller.CodeEditor.GetTextFile();
+            CodeEditor2.Data.TextFile? file = await CodeEditor2.Controller.CodeEditor.GetTextFileAsync();
             if (file == null) return;
             document = file.CodeDocument;
             if (document == null) return;
 
             // set highlights for {n} texts
-            CodeEditor2.Controller.CodeEditor.ClearHighlight();
+            CodeEditor2.Controller.CodeEditor.PostClearHighlight();
             CodeEditor2.Controller.CodeEditor.GetSelection(out int selectionStart,out int selectionEnd);
             CodeEditor2.Controller.CodeEditor.AppendHighlight(selectionStart, selectionEnd);
 
@@ -147,7 +146,7 @@ namespace pluginAi.Snippet
         public override void Aborted()
         {
             if (_cts != null) _cts.Cancel();
-            CodeEditor2.Controller.CodeEditor.ClearHighlight();
+            CodeEditor2.Controller.CodeEditor.PostClearHighlight();
             document = null;
             base.Aborted();
         }
