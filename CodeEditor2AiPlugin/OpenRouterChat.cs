@@ -20,38 +20,32 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-//using OpenAI.Chat;
 using System.Threading;
 using System.Threading.Tasks;
 using static CodeEditor2.CodeEditor.CodeDocument;
 using static pluginAi.OpenRouterModels;
-//using OpenAI;
+using ModelItem = CodeEditor2.LLM.ModelItem;
 
 namespace pluginAi
 {
     public class OpenRouterChat: CodeEditor2.LLM.ILLMChatFrontEnd
     {
 
-        public OpenRouterChat(OpenRouterModels.Model model, bool enableFunctionCalling)
+        public OpenRouterChat(OpenRouterModels.Model model, bool enableFunctionCalling,bool includeReasoning = false)
         {
             initialize(model,enableFunctionCalling);
-            this.enableFunctionCalling = enableFunctionCalling;
+            this.EnableFunctionCalling = enableFunctionCalling;
+            this.IncludeReasoning = includeReasoning;
         }
 
         private Microsoft.Extensions.AI.IChatClient client;
 
         public static string? ApiKey;
 
-        private bool enableFunctionCalling;
+        public bool EnableFunctionCalling { get; }
+        public bool IncludeReasoning { get; set; }
         private void initialize(OpenRouterModels.Model model,bool enableFunctionCalling)
         {
-            // create OpenAI.Chat.ChatClient using OpenAi.net
-            //string apiKey;
-            //using (System.IO.StreamReader sw = new System.IO.StreamReader(@"C:\ApiKey\openrouter.txt"))
-            //{
-            //    apiKey = sw.ReadToEnd().Trim();
-            //    if (apiKey == "") throw new Exception();
-            //}
             if(ApiKey == null)
             {
                 CodeEditor2.Controller.AppendLog("Set API Key for OpenRouter",Avalonia.Media.Colors.Red);
@@ -97,44 +91,80 @@ namespace pluginAi
             return Task.CompletedTask;
         }
 
-        List<Microsoft.Extensions.AI.ChatMessage> chatMessages = new List<Microsoft.Extensions.AI.ChatMessage>();
+        /// <summary>
+        /// Gets the list of available models
+        /// </summary>
+        public List<ModelItem> GetAvailableModels()
+        {
+            return new List<ModelItem>
+            {
+                new ModelItem { Id = "openai/gpt-oss-120b", Name = "OpenAI: gpt-oss-120b", Tag = OpenRouterModels.openai_gpt_oss_120b },
+                new ModelItem { Id = "deepseek/deepseek-v3.2", Name = "DeepSeek: DeepSeek V3.2", Tag = OpenRouterModels.deepseek_deepseek_v3_2 },
+                new ModelItem { Id = "minimax/minimax-m2.5", Name = "MiniMax: MiniMax M2.5", Tag = OpenRouterModels.minimax_minimax_m2_5 },
+                new ModelItem { Id = "moonshotai/kimi-k2.5", Name = "MoonshotAI: Kimi K2.5", Tag = OpenRouterModels.moonshotai_kimi_k2_5 },
+                new ModelItem { Id = "anthropic/claude-3.7-sonnet", Name = "Anthropic: Claude 3.7 Sonnet", Tag = OpenRouterModels.anthropic_claude_3p7_sonnet },
+                new ModelItem { Id = "google/gemini-3-pro-preview", Name = "Google: Gemini 3 Pro Preview", Tag = OpenRouterModels.google_gemini_3_pro_preview },
+                new ModelItem { Id = "google/gemini-2.5-flash-lite", Name = "Google: Gemini 2.5 Flash Lite", Tag = OpenRouterModels.google_gemini_2p5_flash_lite },
+                new ModelItem { Id = "openai/gpt-oss-20b", Name = "OpenAI: gpt-oss-20b", Tag = OpenRouterModels.openai_gpt_oss_20b },
+                new ModelItem { Id = "openai/gpt-4.1-nano", Name = "OpenAI: GPT-4.1 Nano", Tag = OpenRouterModels.openai_gpt_4p1_nano },
+                new ModelItem { Id = "xiaomi/mimo-v2-flash:free", Name = "Xiaomi: MiMo-V2-Flash (free)", Tag = OpenRouterModels.xiaomi_mimo_v2_flash_free },
+                new ModelItem { Id = "google/gemini-3-flash-preview", Name = "Google: Gemini 3 Flash Preview", Tag = OpenRouterModels.google_gemini_3_flash_preview },
+                new ModelItem { Id = "openai/gpt-5.1-codex-mini", Name = "OpenAI: GPT-5.1-Codex-Mini", Tag = OpenRouterModels.openai_gpt_5_1_codex_mini },
+                new ModelItem { Id = "openai/gpt-oss-20b:free", Name = "OpenAI: gpt-oss-20b (free)", Tag = OpenRouterModels.openai_gpt_oss_20b_free }
+            };
+        }
+
+        /// <summary>
+        /// Sets the current model from a ModelItem
+        /// </summary>
+        public Task SetModelAsync(ModelItem modelItem)
+        {
+            if (modelItem.Tag is OpenRouterModels.Model model)
+            {
+                initialize(model, EnableFunctionCalling);
+            }
+            return Task.CompletedTask;
+        }
+
+        public List<CodeEditor2.LLM.ChatMessageWrapper> ChatMessageWrappers { get; } = new List<CodeEditor2.LLM.ChatMessageWrapper>();
 
         public Task ResetAsync()
         {
-            chatMessages.Clear();
+            ChatMessageWrappers.Clear();
             return Task.CompletedTask;
         }
         public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command,IList<AITool>? tools, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             ChatOptions options = new ChatOptions();
-            if (tools != null && enableFunctionCalling)
+            if (tools != null && EnableFunctionCalling)
             {
                 options = new()
                 {
                     Tools = tools
                 };
             }
-            chatMessages.Add(new(ChatRole.User, command));
+            if (IncludeReasoning)
+            {
+                options.AdditionalProperties = new() { ["include_reasoning"] = true };
+            }
+            ChatMessageWrappers.Add(new(ChatRole.User, command));
 
             List<ChatResponseUpdate> updates = [];
 
-            await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(chatMessages, options))
+            await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(ChatMessageWrappers, options))
             {
                 //foreach (var content in update.Contents)
                 //{
-                //    // A. 髢｢謨ｰ蜻ｼ縺ｳ蜃ｺ縺励・逋ｺ逕溘ｒ讀懃衍
                 //    if (content is FunctionCallContent call)
                 //    {
                 //        Console.WriteLine($"\n[Function Call] {call.Name} 縺悟他縺ｳ蜃ｺ縺輔ｌ縺ｾ縺励◆縲ょｼ墓焚: {call.Arguments}");
                 //    }
 
-                //    // B. 髢｢謨ｰ縺ｮ螳溯｡檎ｵ先棡繧呈､懃衍
                 //    if (content is FunctionResultContent result)
                 //    {
                 //        Console.WriteLine($"\n[Function Result] 邨先棡縺梧綾繧翫∪縺励◆: {result.Result}");
                 //    }
 
-                //    // C. 騾壼ｸｸ縺ｮ繝・く繧ｹ繝亥屓遲費ｼ磯先ｬ｡陦ｨ遉ｺ・・
                 //    if (content is TextContent text)
                 //    {
                 //        Console.Write(text.Text);
@@ -144,8 +174,28 @@ namespace pluginAi
                 updates.Add(update);
             }
 
-            chatMessages.AddMessages(updates);
+
+            addMessages(updates);
         }
+
+
+        private void addMessages(IEnumerable<ChatResponseUpdate> updates)
+        {
+
+            if (updates is ICollection<ChatResponseUpdate> { Count: 0 })
+            {
+                return;
+            }
+
+            ChatResponse response = updates.ToChatResponse();
+
+            foreach (var message in response.Messages)
+            {
+                ChatMessageWrappers.Add(new CodeEditor2.LLM.ChatMessageWrapper(message));
+            }
+        }
+
+
 
         public async Task<string> GetAsyncChatResult(string command, IList<AITool>? tools, CancellationToken cancellationToken)
         {
@@ -157,17 +207,13 @@ namespace pluginAi
             return sb.ToString();
         }
 
-        public List<ChatMessage> GetChatMessages()
-        {
-            return chatMessages;
-        }
 
         public async Task SaveMessagesAsync( string filePath)
         {
             try
             {
 
-                string serializedData = SerializeMessages(chatMessages);
+                string serializedData = SerializeMessages(ChatMessageWrappers);
                 await using var fs = File.OpenWrite(filePath);
                 using var sw = new StreamWriter(fs);
                 await sw.WriteAsync(serializedData);
@@ -181,13 +227,14 @@ namespace pluginAi
         
         public async Task LoadMessagesAsync(string filePath)
         {
-            chatMessages.Clear();
+            ChatMessageWrappers.Clear();
             try
             {
                 await using var fs = File.OpenRead(filePath); 
                 using var sr = new StreamReader(fs); 
-                string text = await sr.ReadToEndAsync(); 
-                chatMessages = DeserializeMessages(BinaryData.FromString(text)).ToList();
+                string text = await sr.ReadToEndAsync();
+                List<Microsoft.Extensions.AI.ChatMessage> messages = DeserializeMessages(BinaryData.FromString(text)).ToList();
+//                chatMessages = 
             }
             catch (Exception ex)
             {
