@@ -53,7 +53,7 @@ namespace pluginAi.Snippet
             base.Apply();
 
             // run async task
-            System.Threading.Tasks.Task.Run(RunAsync);
+            await System.Threading.Tasks.Task.Run(RunAsync);
         }
 
         // backrtound thread ------------------------------------------------------
@@ -95,7 +95,7 @@ namespace pluginAi.Snippet
         }
 
         //        private static LLMCopilotOnBrowser? llm = null;
-        private TaskCompletionSource<string> _eventTcs; // return from UI thread
+//        private TaskCompletionSource<string> _eventTcs; // return from UI thread
         private async System.Threading.Tasks.Task runBackGround(CancellationToken token)
         {
             try
@@ -178,7 +178,7 @@ namespace pluginAi.Snippet
         {
             if (document == null) return;
             System.Diagnostics.Debug.Print("## AlwaysFFSnippet.AfterAutoCompleteHandled");
-            if (_eventTcs != null) _eventTcs.TrySetResult("moveNext");
+//            if (_eventTcs != null) _eventTcs.TrySetResult("moveNext");
         }
 
         // return @ carlet line changed

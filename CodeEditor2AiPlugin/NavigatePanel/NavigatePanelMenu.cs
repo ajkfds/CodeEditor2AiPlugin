@@ -108,7 +108,7 @@ namespace pluginAi.NavigatePanel
                 }
             }
 
-            CodeEditor2.Controller.NavigatePanel.UpdateFolder(node);
+            await CodeEditor2.Controller.NavigatePanel.UpdateFolder(node);
         }
     }
 }
