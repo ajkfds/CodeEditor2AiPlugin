@@ -3,8 +3,6 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace pluginAi.NavigatePanel
@@ -77,7 +75,8 @@ namespace pluginAi.NavigatePanel
                 try
                 {
                     _updateVisual();
-                }catch(Exception ex)
+                }
+                catch (Exception ex)
                 {
                     CodeEditor2.Controller.AppendLog("#Exception " + ex.Message, Avalonia.Media.Colors.Red);
                 }

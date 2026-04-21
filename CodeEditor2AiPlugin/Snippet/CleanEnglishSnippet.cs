@@ -2,11 +2,8 @@ using Avalonia.Input;
 using Avalonia.Threading;
 using CodeEditor2.Views;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace pluginAi.Snippet
 {
@@ -29,7 +26,7 @@ namespace pluginAi.Snippet
 
         public override async System.Threading.Tasks.Task ApplyAsync()
         {
-            if(GetLLM == null)
+            if (GetLLM == null)
             {
                 CodeEditor2.Controller.CodeEditor.AbortInteractiveSnippet();
                 return;
@@ -47,7 +44,7 @@ namespace pluginAi.Snippet
 
             // set highlights for {n} texts
             CodeEditor2.Controller.CodeEditor.PostClearHighlight();
-            CodeEditor2.Controller.CodeEditor.GetSelection(out int selectionStart,out int selectionEnd);
+            CodeEditor2.Controller.CodeEditor.GetSelection(out int selectionStart, out int selectionEnd);
             CodeEditor2.Controller.CodeEditor.AppendHighlight(selectionStart, selectionEnd);
 
             base.Apply();
@@ -95,7 +92,7 @@ namespace pluginAi.Snippet
         }
 
         //        private static LLMCopilotOnBrowser? llm = null;
-//        private TaskCompletionSource<string> _eventTcs; // return from UI thread
+        //        private TaskCompletionSource<string> _eventTcs; // return from UI thread
         private async System.Threading.Tasks.Task runBackGround(CancellationToken token)
         {
             try
@@ -105,7 +102,8 @@ namespace pluginAi.Snippet
 
                 int start = 0;
                 int end = 0;
-                await Dispatcher.UIThread.InvokeAsync(() => {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
                     CodeEditor2.Controller.CodeEditor.GetHighlightPosition(0, out start, out end);
                 });
                 string text = document.CreateString(start, end - start);
@@ -117,13 +115,13 @@ namespace pluginAi.Snippet
                 sb.Append(text);
                 string prompt = sb.ToString();
 
-                
-                string? responce = await LLM.AskAsync(prompt,token);
+
+                string? responce = await LLM.AskAsync(prompt, token);
                 if (responce != null)
                 {
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        document.Replace(start, end-start, 0, responce);
+                        document.Replace(start, end - start, 0, responce);
                     });
                 }
                 await Dispatcher.UIThread.InvokeAsync(() =>
@@ -178,7 +176,7 @@ namespace pluginAi.Snippet
         {
             if (document == null) return;
             System.Diagnostics.Debug.Print("## AlwaysFFSnippet.AfterAutoCompleteHandled");
-//            if (_eventTcs != null) _eventTcs.TrySetResult("moveNext");
+            //            if (_eventTcs != null) _eventTcs.TrySetResult("moveNext");
         }
 
         // return @ carlet line changed

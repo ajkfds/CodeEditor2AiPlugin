@@ -1,11 +1,9 @@
 using Avalonia.Controls;
+using CodeEditor2;
 using CodeEditor2.Data;
 using CodeEditor2.NavigatePanel;
-using CodeEditor2;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace pluginAi.NavigatePanel
@@ -59,7 +57,7 @@ namespace pluginAi.NavigatePanel
             }
 
             FolderNode? folderNode = node as FolderNode;
-            if (folderNode != null&& folderNode.Folder != null)
+            if (folderNode != null && folderNode.Folder != null)
             {
                 return folderNode.Folder.RelativePath;
             }
@@ -101,7 +99,8 @@ namespace pluginAi.NavigatePanel
                     {
                         streamWriter(sw, name);
                     }
-                }catch(Exception ex)
+                }
+                catch (Exception ex)
                 {
                     Controller.AppendLog("** error : NavigatePanelMenu.generateFile (" + path + ")", Avalonia.Media.Colors.Red);
                     Controller.AppendLog("* " + ex.Message, Avalonia.Media.Colors.Red);

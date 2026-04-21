@@ -1,39 +1,24 @@
-using Avalonia.Collections;
-using Avalonia.Threading;
-using DynamicData;
-using FaissNet;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.ML;
-using Microsoft.ML.Data;
-using OpenAI.Realtime;
-using Svg;
 using System;
 using System.ClientModel;
-using System.ClientModel.Primitives;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using static CodeEditor2.CodeEditor.CodeDocument;
-using static pluginAi.OpenRouterModels;
 using ModelItem = CodeEditor2.LLM.ModelItem;
 
 namespace pluginAi
 {
-    public class OpenRouterChat: CodeEditor2.LLM.ILLMChatFrontEnd
+    public class OpenRouterChat : CodeEditor2.LLM.ILLMChatFrontEnd
     {
 
-        public OpenRouterChat(OpenRouterModels.Model model, bool enableFunctionCalling,bool includeReasoning = false)
+        public OpenRouterChat(OpenRouterModels.Model model, bool enableFunctionCalling, bool includeReasoning = false)
         {
-            initialize(model,enableFunctionCalling);
+            initialize(model, enableFunctionCalling);
             this.EnableFunctionCalling = enableFunctionCalling;
             this.IncludeReasoning = includeReasoning;
         }
@@ -44,11 +29,11 @@ namespace pluginAi
 
         public bool EnableFunctionCalling { get; }
         public bool IncludeReasoning { get; set; }
-        private void initialize(OpenRouterModels.Model model,bool enableFunctionCalling)
+        private void initialize(OpenRouterModels.Model model, bool enableFunctionCalling)
         {
-            if(ApiKey == null)
+            if (ApiKey == null)
             {
-                CodeEditor2.Controller.AppendLog("Set API Key for OpenRouter",Avalonia.Media.Colors.Red);
+                CodeEditor2.Controller.AppendLog("Set API Key for OpenRouter", Avalonia.Media.Colors.Red);
                 return;
             }
 
@@ -85,7 +70,7 @@ namespace pluginAi
         }
 
 
-        public Task SetModelAsync(OpenRouterModels.Model model,bool enableFunctionCalling)
+        public Task SetModelAsync(OpenRouterModels.Model model, bool enableFunctionCalling)
         {
             initialize(model, enableFunctionCalling);
             return Task.CompletedTask;
@@ -133,7 +118,7 @@ namespace pluginAi
             ChatMessageWrappers.Clear();
             return Task.CompletedTask;
         }
-        public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command,IList<AITool>? tools, [EnumeratorCancellation] CancellationToken cancellationToken)
+        public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, IList<AITool>? tools, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             ChatOptions options = new ChatOptions();
             if (tools != null && EnableFunctionCalling)
@@ -208,7 +193,7 @@ namespace pluginAi
         }
 
 
-        public async Task SaveMessagesAsync( string filePath)
+        public async Task SaveMessagesAsync(string filePath)
         {
             try
             {
@@ -224,17 +209,17 @@ namespace pluginAi
             }
         }
 
-        
+
         public async Task LoadMessagesAsync(string filePath)
         {
             ChatMessageWrappers.Clear();
             try
             {
-                await using var fs = File.OpenRead(filePath); 
-                using var sr = new StreamReader(fs); 
+                await using var fs = File.OpenRead(filePath);
+                using var sr = new StreamReader(fs);
                 string text = await sr.ReadToEndAsync();
                 List<Microsoft.Extensions.AI.ChatMessage> messages = DeserializeMessages(BinaryData.FromString(text)).ToList();
-//                chatMessages = 
+                //                chatMessages = 
             }
             catch (Exception ex)
             {

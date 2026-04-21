@@ -1,21 +1,12 @@
-using Avalonia.Controls;
 using Avalonia.Threading;
 using Microsoft.Extensions.AI;
-using Microsoft.Playwright;
-using Microsoft.VisualBasic;
-using pluginAi.Views;
-using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using TextMateSharp.Internal.Grammars.Parser;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace pluginAi
 {
@@ -113,7 +104,7 @@ namespace pluginAi
         }
 
         // Function Call
-        private async Task<string?> ParseExecutePersudoFunctionCall(string responce,CancellationToken cancellationToken)
+        private async Task<string?> ParseExecutePersudoFunctionCall(string responce, CancellationToken cancellationToken)
         {
             var match = Regex.Match(responce, @"<(?<tool>\w+)>(?<params>.*?)</\k<tool>>", RegexOptions.Singleline);
 
@@ -134,7 +125,7 @@ namespace pluginAi
                     }
                     AIFunction? aIFunction = selectedTool as AIFunction;
                     if (aIFunction == null) return "illgal function call";
-                    object? ret = await aIFunction.InvokeAsync(args,cancellationToken);
+                    object? ret = await aIFunction.InvokeAsync(args, cancellationToken);
                     string? s_ret = ret?.ToString();
                     if (s_ret != null)
                     {
@@ -157,7 +148,7 @@ namespace pluginAi
 
             foreach (var keyValuePair in PromptParameters)
             {
-                prompt = prompt.Replace("${"+keyValuePair.Key+"}", keyValuePair.Value);
+                prompt = prompt.Replace("${" + keyValuePair.Key + "}", keyValuePair.Value);
             }
             prompt = prompt.Replace("\r\n", "\n").Replace("\r", "\n");
             return prompt;
@@ -170,7 +161,7 @@ namespace pluginAi
 
             foreach (var tool in Tools)
             {
-                AppendAIToolInstruction(sb, tool); 
+                AppendAIToolInstruction(sb, tool);
             }
         }
 
@@ -202,7 +193,7 @@ namespace pluginAi
                             isRequired = requiredList.EnumerateArray().Any(x => x.GetString() == name);
                         }
                         sb.AppendLine("-" + name + ":" + (isRequired ? "(required)" : "(optional)") + description);
-                        usage.AppendLine("<"+name+">"+ description +"</" + name + ">");
+                        usage.AppendLine("<" + name + ">" + description + "</" + name + ">");
                     }
                 }
                 sb.AppendLine("Usage:");
