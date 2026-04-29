@@ -118,6 +118,36 @@ namespace pluginAi
             ChatMessageWrappers.Clear();
             return Task.CompletedTask;
         }
+
+        public Task<bool> TryReconnectAsync()
+        {
+            try
+            {
+                // Reinitialize the client
+                // Get the current model from the last message if available
+                OpenRouterModels.Model model = OpenRouterModels.deepseek_deepseek_v3_2;
+                initialize(model, EnableFunctionCalling);
+                return Task.FromResult(true);
+            }
+            catch (Exception ex)
+            {
+                CodeEditor2.Controller.AppendLog($"Reconnection failed: {ex.Message}", Avalonia.Media.Colors.Red);
+                return Task.FromResult(false);
+            }
+        }
+
+        public void RemoveLastUserMessage()
+        {
+            // Remove the last user message from the history
+            for (int i = ChatMessageWrappers.Count - 1; i >= 0; i--)
+            {
+                if (ChatMessageWrappers[i].Role == ChatRole.User)
+                {
+                    ChatMessageWrappers.RemoveAt(i);
+                    break;
+                }
+            }
+        }
         public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, IList<AITool>? tools, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             ChatOptions options = new ChatOptions();
