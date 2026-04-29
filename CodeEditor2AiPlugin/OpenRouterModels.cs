@@ -8,7 +8,8 @@ namespace pluginAi
 
         public static Model openai_gpt_oss_120b = new Model("openai/gpt-oss-120b", "OpenAI: gpt-oss-120b", 131_072, 0.02, 0.10);
         public static Model deepseek_deepseek_v3_2 = new Model("deepseek/deepseek-v3.2", "DeepSeek: DeepSeek V3.2", 163_840, 0.25, 0.4);
-        public static Model minimax_minimax_m2_5 = new Model("minimax/minimax-m2.5", "MiniMax: MiniMax M2.5", 196_608, 0.295, 1.20);
+        public static Model minimax_minimax_m2_5 = new Model("minimax/minimax-m2.5", "MiniMax: MiniMax M2.5", 196_608, 0.5, 1.15);
+        public static Model minimax_minimax_m2_7 = new Model("minimax/minimax-m2.7", "MiniMax: MiniMax M2.7", 196_608, 0.30,1.20);
 
         public static Model moonshotai_kimi_k2_5 = new Model("moonshotai/kimi-k2.5", "MoonshotAI: Kimi K2.5", 262_144, 0.45, 2.20);
         public static Model anthropic_claude_3p7_sonnet = new Model("anthropic/claude-3.7-sonnet", "Anthropic: Claude 3.7 Sonnet", 200_000, 3, 15);
