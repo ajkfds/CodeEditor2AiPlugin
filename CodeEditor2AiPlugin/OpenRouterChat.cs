@@ -164,33 +164,34 @@ namespace pluginAi
             }
             ChatMessageWrappers.Add(new(ChatRole.User, command));
 
-            List<ChatResponseUpdate> updates = [];
+            List<string> resultTexts = new List<string>();
+            List<ChatResponseUpdate> updates = new List<ChatResponseUpdate>();
 
-            await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(ChatMessageWrappers, options))
+            try
             {
-                //foreach (var content in update.Contents)
-                //{
-                //    if (content is FunctionCallContent call)
-                //    {
-                //        Console.WriteLine($"\n[Function Call] {call.Name} 縺悟他縺ｳ蜃ｺ縺輔ｌ縺ｾ縺励◆縲ょｼ墓焚: {call.Arguments}");
-                //    }
-
-                //    if (content is FunctionResultContent result)
-                //    {
-                //        Console.WriteLine($"\n[Function Result] 邨先棡縺梧綾繧翫∪縺励◆: {result.Result}");
-                //    }
-
-                //    if (content is TextContent text)
-                //    {
-                //        Console.Write(text.Text);
-                //    }
-                //}
-                yield return update.Text;
-                updates.Add(update);
+                await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(ChatMessageWrappers, options))
+                {
+                    resultTexts.Add(update.Text);
+                    updates.Add(update);
+                }
+            }
+            catch (System.InvalidOperationException ex) when (ex.Message.Contains("String") && ex.Message.Contains("Number"))
+            {
+                CodeEditor2.Controller.AppendLog($"JSON parsing error: {ex.Message}", Avalonia.Media.Colors.Red);
+                resultTexts.Add("\n\n[Error: Failed to parse response from LLM. Please try again.]\n");
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                CodeEditor2.Controller.AppendLog($"JSON error: {ex.Message}", Avalonia.Media.Colors.Red);
+                resultTexts.Add("\n\n[Error: Invalid JSON response. Please try again.]\n");
             }
 
-
             addMessages(updates);
+
+            foreach (string text in resultTexts)
+            {
+                yield return text;
+            }
         }
 
 
@@ -251,25 +252,39 @@ namespace pluginAi
                 List<Microsoft.Extensions.AI.ChatMessage> messages = DeserializeMessages(BinaryData.FromString(text)).ToList();
                 //                chatMessages = 
             }
+            catch (System.InvalidOperationException ex) when (ex.Message.Contains("String") && ex.Message.Contains("Number"))
+            {
+                CodeEditor2.Controller.AppendLog($"JSON parsing error while loading: {ex.Message}", Avalonia.Media.Colors.Red);
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"Load error: {ex.Message}");
+                CodeEditor2.Controller.AppendLog($"Load error: {ex.Message}", Avalonia.Media.Colors.Red);
             }
         }
 
-        public static IEnumerable<ChatMessage> DeserializeMessages(BinaryData data)
+        public static List<ChatMessage> DeserializeMessages(BinaryData data)
         {
+            List<ChatMessage> result = new List<ChatMessage>();
             using JsonDocument messagesAsJson = JsonDocument.Parse(data.ToMemory());
 
             foreach (JsonElement jsonElement in messagesAsJson.RootElement.EnumerateArray())
             {
-                var message = JsonSerializer.Deserialize<ChatMessage>(jsonElement.GetRawText());
-                if (message != null)
+                try
                 {
-                    yield return message;
+                    var message = JsonSerializer.Deserialize<ChatMessage>(jsonElement.GetRawText());
+                    if (message != null)
+                    {
+                        result.Add(message);
+                    }
+                }
+                catch (System.InvalidOperationException ex) when (ex.Message.Contains("String") && ex.Message.Contains("Number"))
+                {
+                    // Skip malformed messages that have type mismatches (e.g., number instead of string)
+                    CodeEditor2.Controller.AppendLog($"Skipping malformed message: {ex.Message}", Avalonia.Media.Colors.Orange);
+                    continue;
                 }
             }
-
+            return result;
         }
         public static string SerializeMessages(IEnumerable<ChatMessage> messages)
         {
