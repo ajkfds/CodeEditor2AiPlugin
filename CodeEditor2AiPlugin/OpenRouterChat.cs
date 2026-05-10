@@ -29,8 +29,12 @@ namespace pluginAi
 
         public bool EnableFunctionCalling { get; }
         public bool IncludeReasoning { get; set; }
+
+        private OpenRouterModels.Model? currentModel = null;
         private void initialize(OpenRouterModels.Model model, bool enableFunctionCalling)
         {
+            currentModel = model;
+
             if (ApiKey == null)
             {
                 CodeEditor2.Controller.AppendLog("Set API Key for OpenRouter", Avalonia.Media.Colors.Red);
@@ -121,12 +125,14 @@ namespace pluginAi
 
         public Task<bool> TryReconnectAsync()
         {
+            if (currentModel == null) return Task.FromResult(false);
+
             try
             {
                 // Reinitialize the client
                 // Get the current model from the last message if available
-                OpenRouterModels.Model model = OpenRouterModels.deepseek_deepseek_v3_2;
-                initialize(model, EnableFunctionCalling);
+//                OpenRouterModels.Model model = OpenRouterModels.deepseek_deepseek_v3_2;
+                initialize(currentModel, EnableFunctionCalling);
                 return Task.FromResult(true);
             }
             catch (Exception ex)
