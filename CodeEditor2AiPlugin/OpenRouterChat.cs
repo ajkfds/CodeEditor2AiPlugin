@@ -156,7 +156,17 @@ namespace pluginAi
         }
         public async IAsyncEnumerable<string> GetAsyncCollectionChatResult(string command, IList<AITool>? tools, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            ChatOptions options = new ChatOptions();
+            ChatOptions options = new ChatOptions
+            {
+                // MiniMax M2.5 推奨値: 1.0 (0.0にすると思考がスタックして空文字になりやすい)
+                Temperature = 1.0f,
+                TopP = 0.95f,
+
+                // 思考プロセス＋最終回答が余裕で入るサイズを指定
+                MaxOutputTokens = 4096,
+            };
+
+//            ChatOptions options = new ChatOptions();
             if (tools != null && EnableFunctionCalling)
             {
                 options = new()
