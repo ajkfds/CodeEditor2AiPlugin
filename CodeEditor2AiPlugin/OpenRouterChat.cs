@@ -16,9 +16,9 @@ namespace pluginAi
     public class OpenRouterChat : CodeEditor2.LLM.ILLMChatFrontEnd
     {
 
-        public OpenRouterChat(OpenRouterModels.Model model, bool enableFunctionCalling, bool includeReasoning = false)
+        public OpenRouterChat(string modelName, bool enableFunctionCalling, bool includeReasoning = false)
         {
-            initialize(model, enableFunctionCalling);
+            initialize(modelName, enableFunctionCalling);
             this.EnableFunctionCalling = enableFunctionCalling;
             this.IncludeReasoning = includeReasoning;
         }
@@ -30,10 +30,9 @@ namespace pluginAi
         public bool EnableFunctionCalling { get; }
         public bool IncludeReasoning { get; set; }
 
-        private OpenRouterModels.Model? currentModel = null;
-        private void initialize(OpenRouterModels.Model model, bool enableFunctionCalling)
+        private string? currentModelName = null;
+        private void initialize(string modelName, bool enableFunctionCalling)
         {
-            currentModel = model;
 
             if (ApiKey == null)
             {
@@ -49,7 +48,7 @@ namespace pluginAi
             };
 
             OpenAI.Chat.ChatClient openAiClient = new OpenAI.Chat.ChatClient(
-                model: @"@preset/minimax-m2-5",//model.Name,
+                model: modelName,
                 new ApiKeyCredential(ApiKey),
                 openAIClientOptions
                 );
@@ -74,9 +73,9 @@ namespace pluginAi
         }
 
 
-        public Task SetModelAsync(OpenRouterModels.Model model, bool enableFunctionCalling)
+        public Task SetModelAsync(string modelName, bool enableFunctionCalling)
         {
-            initialize(model, enableFunctionCalling);
+            initialize(modelName, enableFunctionCalling);
             return Task.CompletedTask;
         }
 
@@ -110,7 +109,7 @@ namespace pluginAi
         {
             if (modelItem.Tag is OpenRouterModels.Model model)
             {
-                initialize(model, EnableFunctionCalling);
+                initialize(model.Name, EnableFunctionCalling);
             }
             return Task.CompletedTask;
         }
@@ -125,14 +124,14 @@ namespace pluginAi
 
         public Task<bool> TryReconnectAsync()
         {
-            if (currentModel == null) return Task.FromResult(false);
+            if (currentModelName == null) return Task.FromResult(false);
 
             try
             {
                 // Reinitialize the client
                 // Get the current model from the last message if available
 //                OpenRouterModels.Model model = OpenRouterModels.deepseek_deepseek_v3_2;
-                initialize(currentModel, EnableFunctionCalling);
+                initialize(currentModelName, EnableFunctionCalling);
                 return Task.FromResult(true);
             }
             catch (Exception ex)
@@ -246,7 +245,7 @@ namespace pluginAi
             {
 
                 string serializedData = SerializeMessages(ChatMessageWrappers);
-                await using var fs = File.OpenWrite(filePath);
+                await using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read);
                 using var sw = new StreamWriter(fs);
                 await sw.WriteAsync(serializedData);
             }

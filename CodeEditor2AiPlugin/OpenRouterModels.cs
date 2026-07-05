@@ -8,8 +8,13 @@ namespace pluginAi
 
         public static Model openai_gpt_oss_120b = new Model("openai/gpt-oss-120b", "OpenAI: gpt-oss-120b", 131_072, 0.02, 0.10);
         public static Model deepseek_deepseek_v3_2 = new Model("deepseek/deepseek-v3.2", "DeepSeek: DeepSeek V3.2", 163_840, 0.25, 0.4);
+
+
+        public static Model z_ai_glm_5_2 = new Model("z-ai/glm-5.2", "z-ai glm-5.2", 1_000_000, 1.2, 4.1);
+
         public static Model minimax_minimax_m2_5 = new Model("minimax/minimax-m2.5", "MiniMax: MiniMax M2.5", 196_608, 0.5, 1.15);
         public static Model minimax_minimax_m2_7 = new Model("minimax/minimax-m2.7", "MiniMax: MiniMax M2.7", 196_608, 0.30,1.20);
+        public static Model minimax_minimax_m3 = new Model("minimax/minimax-m3", "MiniMax: MiniMax M3", 1_000_000, 0.3, 1.2);
 
         public static Model moonshotai_kimi_k2_5 = new Model("moonshotai/kimi-k2.5", "MoonshotAI: Kimi K2.5", 262_144, 0.45, 2.20);
         public static Model anthropic_claude_3p7_sonnet = new Model("anthropic/claude-3.7-sonnet", "Anthropic: Claude 3.7 Sonnet", 200_000, 3, 15);
@@ -19,6 +24,8 @@ namespace pluginAi
         public static Model openai_gpt_oss_20b = new Model("openai/gpt-oss-20b", "OpenAI: gpt-oss-20b", 131_072, 0.016, 0.06);
         public static Model openai_gpt_4p1_nano = new Model("openai/gpt-4.1-nano", "OpenAI: GPT-4.1 Nano", 1_047_576, 0.10, 0.40);// $10/K web search)
         public static Model xiaomi_mimo_v2_flash_free = new Model("xiaomi/mimo-v2-flash:free", "Xiaomi: MiMo-V2-Flash (free)", 262_144, 0, 0);
+        public static Model xiaomi_mimo_v2_5_pro = new Model("xiaomi/mimo-v2.5-pro", "xiaomi/mimo-v2.5-pro", 1_000_000, 0.435, 0.87);
+
         public static Model google_gemini_3_flash_preview = new Model("google/gemini-3-flash-preview", "Google: Gemini 3 Flash Preview", 1_048_576, 0.50, 3);
         public static Model openai_gpt_5_1_codex_mini = new Model("openai/gpt-5.1-codex-mini", "OpenAI: GPT-5.1-Codex-Mini", 400_000, 0.25, 2);
 
