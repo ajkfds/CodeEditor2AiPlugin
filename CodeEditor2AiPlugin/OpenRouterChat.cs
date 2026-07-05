@@ -49,7 +49,7 @@ namespace pluginAi
             };
 
             OpenAI.Chat.ChatClient openAiClient = new OpenAI.Chat.ChatClient(
-                model: model.Name,
+                model: @"@preset/minimax-m2-5",//model.Name,
                 new ApiKeyCredential(ApiKey),
                 openAIClientOptions
                 );
@@ -266,7 +266,12 @@ namespace pluginAi
                 using var sr = new StreamReader(fs);
                 string text = await sr.ReadToEndAsync();
                 List<Microsoft.Extensions.AI.ChatMessage> messages = DeserializeMessages(BinaryData.FromString(text)).ToList();
-                //                chatMessages = 
+                
+                // Add deserialized messages to ChatMessageWrappers
+                foreach (var message in messages)
+                {
+                    ChatMessageWrappers.Add(new CodeEditor2.LLM.ChatMessageWrapper(message));
+                }
             }
             catch (System.InvalidOperationException ex) when (ex.Message.Contains("String") && ex.Message.Contains("Number"))
             {
@@ -278,16 +283,28 @@ namespace pluginAi
             }
         }
 
+        private static JsonSerializerOptions GetSerializerOptions()
+        {
+            // Use default options with IncludeFields to properly serialize/deserialize ChatMessage
+            return new JsonSerializerOptions
+            {
+                IncludeFields = true,
+                PropertyNameCaseInsensitive = true
+            };
+        }
+
         public static List<ChatMessage> DeserializeMessages(BinaryData data)
         {
             List<ChatMessage> result = new List<ChatMessage>();
             using JsonDocument messagesAsJson = JsonDocument.Parse(data.ToMemory());
 
+            var options = GetSerializerOptions();
+
             foreach (JsonElement jsonElement in messagesAsJson.RootElement.EnumerateArray())
             {
                 try
                 {
-                    var message = JsonSerializer.Deserialize<ChatMessage>(jsonElement.GetRawText());
+                    var message = JsonSerializer.Deserialize<ChatMessage>(jsonElement.GetRawText(), options);
                     if (message != null)
                     {
                         result.Add(message);
@@ -304,7 +321,7 @@ namespace pluginAi
         }
         public static string SerializeMessages(IEnumerable<ChatMessage> messages)
         {
-            return JsonSerializer.Serialize(messages);
+            return JsonSerializer.Serialize(messages, GetSerializerOptions());
         }
     }
 }
