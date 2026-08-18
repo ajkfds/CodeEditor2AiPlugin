@@ -79,7 +79,7 @@ namespace pluginAi.NavigatePanel
             if (!relativePath.EndsWith(System.IO.Path.DirectorySeparatorChar)) relativePath += System.IO.Path.DirectorySeparatorChar;
 
             CodeEditor2.Tools.InputWindow window = new CodeEditor2.Tools.InputWindow("Create new " + typeName, "new " + typeName + " name");
-            await Controller.ShowDialog(window);
+            await Controller.ShowDialogAsync(window);
 
             if (window.Cancel) return;
             string name = window.InputText.Trim();
