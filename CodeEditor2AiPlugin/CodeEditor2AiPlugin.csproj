@@ -21,8 +21,8 @@
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
     <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
     <PackageReference Include="FaissNet" Version="1.1.0" />
-    <PackageReference Include="LiveMarkdown.Avalonia" Version="2.4.0" />
-    <PackageReference Include="LiveMarkdown.Avalonia.Math" Version="2.4.0" />
+    <PackageReference Include="LiveMarkdown.Avalonia" Version="2.4.1" />
+    <PackageReference Include="LiveMarkdown.Avalonia.Math" Version="2.4.1" />
     <PackageReference Include="Microsoft.Agents.AI" Version="1.21.0" />
     <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.21.0" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.10.0" />
