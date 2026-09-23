@@ -162,7 +162,7 @@ namespace pluginAi
                 TopP = 0.95f,
 
                 // 思考プロセス＋最終回答が余裕で入るサイズを指定
-                MaxOutputTokens = 4096,
+//                MaxOutputTokens = 4096,
             };
 
 //            ChatOptions options = new ChatOptions();
@@ -186,8 +186,48 @@ namespace pluginAi
             {
                 await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(ChatMessageWrappers, options))
                 {
-                    resultTexts.Add(update.Text);
-                    updates.Add(update);
+                    // FinishReason が入っていれば記録
+                    if (update.FinishReason.HasValue)
+                    {
+                        string reasonText;
+                        ChatFinishReason reason = update.FinishReason.Value;
+
+                        if (reason == ChatFinishReason.ToolCalls)
+                        {
+                            reasonText = "blank (Function Call requested)";
+                        }
+                        else if (reason == ChatFinishReason.ContentFilter)
+                        {
+                            reasonText = "blank (Content filtered)";
+                        }
+                        else if (reason == ChatFinishReason.Length)
+                        {
+                            reasonText = "blank (Max tokens exceeded)";
+                        }
+                        else
+                        {
+                            // Value プロパティで文字列値（"tool_calls", "stop" など）を取得できます
+                            reasonText = $"blank ({reason.Value})";
+                        }
+                        if(reason != ChatFinishReason.Stop)
+                        {
+                            resultTexts.Add(reasonText);
+                        }
+                    }
+
+                    // テキストチャンクが含まれている場合
+                    if (!string.IsNullOrEmpty(update.Text))
+                    {
+                        resultTexts.Add(update.Text);
+                        updates.Add(update);
+                    }
+
+                    // ツール呼び出し要求が含まれているかチェック
+                    if (update.Contents != null && update.Contents.Any(c => c is FunctionCallContent))
+                    {
+                        if(System.Diagnostics.Debugger.IsAttached) System.Diagnostics.Debugger.Break();
+//                        hasFunctionCalls = true;
+                    }
                 }
             }
             catch (System.InvalidOperationException ex) when (ex.Message.Contains("String") && ex.Message.Contains("Number"))
