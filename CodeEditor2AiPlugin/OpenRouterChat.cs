@@ -157,15 +157,18 @@ namespace pluginAi
         {
             ChatOptions options = new ChatOptions
             {
-                // MiniMax M2.5 推奨値: 1.0 (0.0にすると思考がスタックして空文字になりやすい)
                 Temperature = 1.0f,
                 TopP = 0.95f,
-
-                // 思考プロセス＋最終回答が余裕で入るサイズを指定
-//                MaxOutputTokens = 4096,
+                Reasoning = new ReasoningOptions() { Effort = ReasoningEffort.Low }
             };
+            //ChatOptions options = new ChatOptions
+            //{
+            //    // MiniMax M2.5 推奨値: 1.0 (0.0にすると思考がスタックして空文字になりやすい)
+            //    Temperature = 1.0f,
+            //    TopP = 0.95f,
+            //};
 
-//            ChatOptions options = new ChatOptions();
+            //            ChatOptions options = new ChatOptions();
             if (tools != null && EnableFunctionCalling)
             {
                 options = new()
@@ -179,47 +182,46 @@ namespace pluginAi
             }
             ChatMessageWrappers.Add(new(ChatRole.User, command));
 
-            List<string> resultTexts = new List<string>();
             List<ChatResponseUpdate> updates = new List<ChatResponseUpdate>();
 
+            // Stream chunks to the caller immediately (no full buffering).
+            // This keeps the ChatControl "waiting..." timer stoppable and makes
+            // the Abort button effective: the cancellationToken is propagated to
+            // the underlying stream, so Cancel() throws OperationCanceledException
+            // here and completeWork can unwind (restoring inputAcceptable).
             try
             {
-                await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(ChatMessageWrappers, options))
+                await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(ChatMessageWrappers, options, cancellationToken))
                 {
-                    // FinishReason が入っていれば記録
+                    // FinishReason が入っていれば通知
                     if (update.FinishReason.HasValue)
                     {
-                        string reasonText;
                         ChatFinishReason reason = update.FinishReason.Value;
 
                         if (reason == ChatFinishReason.ToolCalls)
                         {
-                            reasonText = "blank (Function Call requested)";
+                            yield return "blank (Function Call requested)";
                         }
                         else if (reason == ChatFinishReason.ContentFilter)
                         {
-                            reasonText = "blank (Content filtered)";
+                            yield return "blank (Content filtered)";
                         }
                         else if (reason == ChatFinishReason.Length)
                         {
-                            reasonText = "blank (Max tokens exceeded)";
+                            yield return "blank (Max tokens exceeded)";
                         }
-                        else
+                        else if (reason != ChatFinishReason.Stop)
                         {
                             // Value プロパティで文字列値（"tool_calls", "stop" など）を取得できます
-                            reasonText = $"blank ({reason.Value})";
-                        }
-                        if(reason != ChatFinishReason.Stop)
-                        {
-                            resultTexts.Add(reasonText);
+                            yield return $"blank ({reason.Value})";
                         }
                     }
 
-                    // テキストチャンクが含まれている場合
+                    // テキストチャンクが含まれている場合は即座に yield
                     if (!string.IsNullOrEmpty(update.Text))
                     {
-                        resultTexts.Add(update.Text);
                         updates.Add(update);
+                        yield return update.Text;
                     }
 
                     // ツール呼び出し要求が含まれているかチェック
@@ -230,22 +232,10 @@ namespace pluginAi
                     }
                 }
             }
-            catch (System.InvalidOperationException ex) when (ex.Message.Contains("String") && ex.Message.Contains("Number"))
+            finally
             {
-                CodeEditor2.Controller.AppendLog($"JSON parsing error: {ex.Message}", Avalonia.Media.Colors.Red);
-                resultTexts.Add("\n\n[Error: Failed to parse response from LLM. Please try again.]\n");
-            }
-            catch (System.Text.Json.JsonException ex)
-            {
-                CodeEditor2.Controller.AppendLog($"JSON error: {ex.Message}", Avalonia.Media.Colors.Red);
-                resultTexts.Add("\n\n[Error: Invalid JSON response. Please try again.]\n");
-            }
-
-            addMessages(updates);
-
-            foreach (string text in resultTexts)
-            {
-                yield return text;
+                // 履歴は正常終了・キャンセル・例外のどの経路でも反映する
+                addMessages(updates);
             }
         }
 
