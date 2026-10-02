@@ -80,6 +80,13 @@ namespace pluginAi
 
             // record current model only after successful client initialization
             currentModelName = modelName;
+
+            // reflect the current model so UI (ChatControl model selector) can show it
+            OpenRouterModels.Model? matched = OpenRouterModels.GetAllModels().FirstOrDefault(m => m.Name == modelName);
+            if (matched != null)
+            {
+                currentModel = new ModelItem { Id = matched.Name, Name = matched.Caption, Tag = matched };
+            }
         }
 
 
