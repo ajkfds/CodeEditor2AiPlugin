@@ -1,9 +1,28 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+
 namespace pluginAi
 {
     public static class OpenRouterModels
     {
         // openrouter models
         // https://openrouter.ai/models
+
+        /// <summary>
+        /// Enumerates all static Model fields declared in this class (in declaration order).
+        /// Keeps GetAvailableModels() in sync with the model list without manual duplication.
+        /// </summary>
+        public static List<Model> GetAllModels()
+        {
+            return typeof(OpenRouterModels)
+                .GetFields(BindingFlags.Public | BindingFlags.Static)
+                .Where(f => f.FieldType == typeof(Model))
+                .OrderBy(f => f.MetadataToken) // declaration order
+                .Select(f => (Model)f.GetValue(null)!)
+                .Where(m => m != null)
+                .ToList();
+        }
 
         public static Model z_ai_glm_5_3_flash = new Model("z-ai/glm-5.3-flash", "Z.ai: GLM 5.3 Flash", 1_300_000,0.075,0.25);
 

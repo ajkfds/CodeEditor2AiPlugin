@@ -94,22 +94,10 @@ namespace pluginAi
         /// </summary>
         public List<ModelItem> GetAvailableModels()
         {
-            return new List<ModelItem>
-            {
-                new ModelItem { Id = "openai/gpt-oss-120b", Name = "OpenAI: gpt-oss-120b", Tag = OpenRouterModels.openai_gpt_oss_120b },
-                new ModelItem { Id = "deepseek/deepseek-v3.2", Name = "DeepSeek: DeepSeek V3.2", Tag = OpenRouterModels.deepseek_deepseek_v3_2 },
-                new ModelItem { Id = "minimax/minimax-m2.5", Name = "MiniMax: MiniMax M2.5", Tag = OpenRouterModels.minimax_minimax_m2_5 },
-                new ModelItem { Id = "moonshotai/kimi-k2.5", Name = "MoonshotAI: Kimi K2.5", Tag = OpenRouterModels.moonshotai_kimi_k2_5 },
-                new ModelItem { Id = "anthropic/claude-3.7-sonnet", Name = "Anthropic: Claude 3.7 Sonnet", Tag = OpenRouterModels.anthropic_claude_3p7_sonnet },
-                new ModelItem { Id = "google/gemini-3-pro-preview", Name = "Google: Gemini 3 Pro Preview", Tag = OpenRouterModels.google_gemini_3_pro_preview },
-                new ModelItem { Id = "google/gemini-2.5-flash-lite", Name = "Google: Gemini 2.5 Flash Lite", Tag = OpenRouterModels.google_gemini_2p5_flash_lite },
-                new ModelItem { Id = "openai/gpt-oss-20b", Name = "OpenAI: gpt-oss-20b", Tag = OpenRouterModels.openai_gpt_oss_20b },
-                new ModelItem { Id = "openai/gpt-4.1-nano", Name = "OpenAI: GPT-4.1 Nano", Tag = OpenRouterModels.openai_gpt_4p1_nano },
-                new ModelItem { Id = "xiaomi/mimo-v2-flash:free", Name = "Xiaomi: MiMo-V2-Flash (free)", Tag = OpenRouterModels.xiaomi_mimo_v2_flash_free },
-                new ModelItem { Id = "google/gemini-3-flash-preview", Name = "Google: Gemini 3 Flash Preview", Tag = OpenRouterModels.google_gemini_3_flash_preview },
-                new ModelItem { Id = "openai/gpt-5.1-codex-mini", Name = "OpenAI: GPT-5.1-Codex-Mini", Tag = OpenRouterModels.openai_gpt_5_1_codex_mini },
-                new ModelItem { Id = "openai/gpt-oss-20b:free", Name = "OpenAI: gpt-oss-20b (free)", Tag = OpenRouterModels.openai_gpt_oss_20b_free }
-            };
+            // dynamically generated from the OpenRouterModels static model list
+            return OpenRouterModels.GetAllModels()
+                .Select(model => new ModelItem { Id = model.Name, Name = model.Caption, Tag = model })
+                .ToList();
         }
 
         /// <summary>
