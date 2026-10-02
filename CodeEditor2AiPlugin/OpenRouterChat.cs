@@ -31,6 +31,13 @@ namespace pluginAi
         public bool IncludeReasoning { get; set; }
 
         private string? currentModelName = null;
+        private ModelItem? currentModel = null;
+
+        /// <summary>
+        /// The currently selected model (null when not yet initialized)
+        /// </summary>
+        public ModelItem? CurrentModel => currentModel;
+
         private void initialize(string modelName, bool enableFunctionCalling)
         {
 
@@ -70,6 +77,9 @@ namespace pluginAi
                    .AsBuilder(client)
                    .Build();
             }
+
+            // record current model only after successful client initialization
+            currentModelName = modelName;
         }
 
 
@@ -110,6 +120,7 @@ namespace pluginAi
             if (modelItem.Tag is OpenRouterModels.Model model)
             {
                 initialize(model.Name, EnableFunctionCalling);
+                currentModel = modelItem;
             }
             return Task.CompletedTask;
         }
