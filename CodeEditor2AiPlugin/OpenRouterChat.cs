@@ -30,6 +30,14 @@ namespace pluginAi
         public bool EnableFunctionCalling { get; }
         public bool IncludeReasoning { get; set; }
 
+        /// <summary>
+        /// OpenRouter provider routing の "only" に指定する provider slug (例: "gmicloud/fp8")。
+        /// null または空なら routing 制限なし。
+        /// OpenRouter 固有の非標準フィールドのため ChatOptions.AdditionalProperties 経由で
+        /// リクエストボディに透過送信する (include_reasoning と同一メカニズム)。
+        /// </summary>
+        public string? ProviderOnly { get; set; }
+
         private string? currentModelName = null;
         private ModelItem? currentModel = null;
 
@@ -185,6 +193,19 @@ namespace pluginAi
             if (IncludeReasoning)
             {
                 options.AdditionalProperties = new() { ["include_reasoning"] = true };
+            }
+            // OpenRouter provider routing: 非標準フィールド "provider" を
+            // AdditionalProperties 経由でリクエストボディに透過送信する
+            // (include_reasoning と同一メカニズム)
+            if (!string.IsNullOrEmpty(ProviderOnly))
+            {
+                options.AdditionalProperties ??= new();
+                options.AdditionalProperties["provider"] = BinaryData.FromString(
+                    JsonSerializer.Serialize(new
+                    {
+                        only = new[] { ProviderOnly },
+                        allow_fallbacks = false
+                    }));
             }
             ChatMessageWrappers.Add(new(ChatRole.User, command));
 
