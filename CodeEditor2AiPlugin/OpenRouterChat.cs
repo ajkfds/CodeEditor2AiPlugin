@@ -1,12 +1,17 @@
 using Microsoft.Extensions.AI;
 using System;
 using System.ClientModel;
+using System.ClientModel.Primitives;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using ModelItem = CodeEditor2.LLM.ModelItem;
@@ -33,8 +38,8 @@ namespace pluginAi
         /// <summary>
         /// OpenRouter provider routing の "only" に指定する provider slug (例: "gmicloud/fp8")。
         /// null または空なら routing 制限なし。
-        /// OpenRouter 固有の非標準フィールドのため ChatOptions.AdditionalProperties 経由で
-        /// リクエストボディに透過送信する (include_reasoning と同一メカニズム)。
+        /// OpenRouter 固有の非標準フィールドのため、MEAI アダプタを経由せず
+        /// HttpClient パイプライン (ProviderRoutingHandler) でリクエストボディに注入する。
         /// </summary>
         public string? ProviderOnly { get; set; }
 
@@ -61,6 +66,15 @@ namespace pluginAi
                     "https://openrouter.ai/api/v1"  // openrouter endpoint
                 )
             };
+
+            // MEAI OpenAI adapter は ChatOptions.AdditionalProperties を OpenAI SDK の
+            // リクエストボディに転送しないため、OpenRouter 固有の "provider" フィールドは
+            // この経路では送れない。そこで HttpClient に DelegatingHandler を挟み、
+            // /chat/completions へのリクエストボディを送信直前に書き換えて
+            // provider.only / allow_fallbacks を注入する。
+            // (ProviderOnly は set 可能プロパティのため、ラムダ経由で最新値を参照する)
+            openAIClientOptions.Transport = new HttpClientPipelineTransport(
+                new HttpClient(new ProviderRoutingHandler(() => ProviderOnly, new HttpClientHandler())));
 
             OpenAI.Chat.ChatClient openAiClient = new OpenAI.Chat.ChatClient(
                 model: modelName,
@@ -194,19 +208,9 @@ namespace pluginAi
             {
                 options.AdditionalProperties = new() { ["include_reasoning"] = true };
             }
-            // OpenRouter provider routing: 非標準フィールド "provider" を
-            // AdditionalProperties 経由でリクエストボディに透過送信する
-            // (include_reasoning と同一メカニズム)
-            if (!string.IsNullOrEmpty(ProviderOnly))
-            {
-                options.AdditionalProperties ??= new();
-                options.AdditionalProperties["provider"] = BinaryData.FromString(
-                    JsonSerializer.Serialize(new
-                    {
-                        only = new[] { ProviderOnly },
-                        allow_fallbacks = false
-                    }));
-            }
+            // OpenRouter provider routing は ProviderRoutingHandler が
+            // リクエストボディに直接注入する (AdditionalProperties は
+            // MEAI OpenAI アダプタで転送されないため使えない)
             ChatMessageWrappers.Add(new(ChatRole.User, command));
 
             List<ChatResponseUpdate> updates = new List<ChatResponseUpdate>();
@@ -350,6 +354,49 @@ namespace pluginAi
                 IncludeFields = true,
                 PropertyNameCaseInsensitive = true
             };
+        }
+
+        /// <summary>
+        /// /chat/completions リクエストボディに OpenRouter の provider routing
+        /// (only / allow_fallbacks) を注入する DelegatingHandler。
+        /// </summary>
+        private sealed class ProviderRoutingHandler : DelegatingHandler
+        {
+            private readonly Func<string?> _providerOnlyGetter;
+
+            public ProviderRoutingHandler(Func<string?> providerOnlyGetter, HttpMessageHandler innerHandler)
+                : base(innerHandler)
+            {
+                _providerOnlyGetter = providerOnlyGetter;
+            }
+
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                if (request.RequestUri != null &&
+                    request.RequestUri.AbsolutePath.EndsWith("/chat/completions", StringComparison.Ordinal) &&
+                    request.Content != null)
+                {
+                    string? providerOnly = _providerOnlyGetter();
+                    if (!string.IsNullOrEmpty(providerOnly))
+                    {
+                        byte[] body = await request.Content.ReadAsByteArrayAsync(cancellationToken);
+                        JsonNode? root = JsonNode.Parse(body);
+                        if (root is JsonObject obj && !obj.ContainsKey("provider"))
+                        {
+                            obj["provider"] = new JsonObject
+                            {
+                                ["only"] = new JsonArray(providerOnly),
+                                ["allow_fallbacks"] = false
+                            };
+                            byte[] newBody = Encoding.UTF8.GetBytes(obj.ToJsonString());
+                            ByteArrayContent newContent = new ByteArrayContent(newBody);
+                            newContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                            request.Content = newContent;
+                        }
+                    }
+                }
+                return await base.SendAsync(request, cancellationToken);
+            }
         }
 
         public static List<ChatMessage> DeserializeMessages(BinaryData data)
