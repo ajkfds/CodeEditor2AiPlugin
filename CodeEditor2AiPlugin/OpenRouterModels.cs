@@ -24,6 +24,8 @@ namespace pluginAi
                 .ToList();
         }
 
+
+        public static Model deepseek_4_1_flash = new Model("deepseek/deepseek-v4.1-flash", "DeepSeek: 4.1 Flash", 1_000_000, 0.02, 0.891);
         public static Model z_ai_glm_5_3_flash = new Model("z-ai/glm-5.3-flash", "Z.ai: GLM 5.3 Flash", 1_300_000,0.075,0.25);
 
         public static Model openai_gpt_oss_120b = new Model("openai/gpt-oss-120b", "OpenAI: gpt-oss-120b", 131_072, 0.02, 0.10);
