@@ -234,6 +234,15 @@ namespace pluginAi
             {
                 await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(ChatMessageWrappers, options, cancellationToken))
                 {
+                    // 全ての update を収集する。
+                    // 最終チャンクのように Text が空で usage (UsageContent) のみを
+                    // 運ぶ update や、FunctionCallContent を運ぶ update を
+                    // 取りこぼすと、以降の updates.ToChatResponse() で usage 情報や
+                    // tool call 履歴が欠落する (lastUsageInfo が null になる / 次ターンで
+                    // assistant tool-call メッセージが消失する) ため、
+                    // 条件で絞らず全件を蓄積する。
+                    updates.Add(update);
+
                     // FinishReason が入っていれば通知
                     if (update.FinishReason.HasValue)
                     {
@@ -259,20 +268,10 @@ namespace pluginAi
                     }
 
                     // テキストチャンクが含まれている場合は即座に yield
+                    // (収集はループ先頭で実施済み)
                     if (!string.IsNullOrEmpty(update.Text))
                     {
-                        updates.Add(update);
                         yield return update.Text;
-                    }
-
-                    // ツール呼び出し要求も updates に収集する。
-                    // 収集しないと finish_reason=tool_calls の assistant tool-call
-                    // メッセージが履歴 (ChatMessageWrappers / SaveMessages) から
-                    // 消失し、次ターンの文脈が欠落して再び tool_calls のみの
-                    // 空応答を返す悪循環になる。
-                    if (update.Contents != null && update.Contents.Any(c => c is FunctionCallContent))
-                    {
-                        updates.Add(update);
                     }
                 }
             }
