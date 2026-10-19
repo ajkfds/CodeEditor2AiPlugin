@@ -51,6 +51,16 @@ namespace pluginAi
         /// </summary>
         public ModelItem? CurrentModel => currentModel;
 
+        private string? lastUsageInfo = null;
+
+        /// <summary>
+        /// Human-readable summary of the token usage of the most recent LLM
+        /// response (e.g. "tokens: 1234 in / 567 out / 1801 total").
+        /// null when the provider did not report usage.
+        /// Display-only; never part of the message content sent to the LLM.
+        /// </summary>
+        public string? LastUsageInfo => lastUsageInfo;
+
         private void initialize(string modelName, bool enableFunctionCalling)
         {
 
@@ -279,15 +289,52 @@ namespace pluginAi
 
             if (updates is ICollection<ChatResponseUpdate> { Count: 0 })
             {
+                lastUsageInfo = null;
                 return;
             }
 
             ChatResponse response = updates.ToChatResponse();
 
+            // Capture token usage of this response (when the provider reports it)
+            // so the UI can show it as an informational footer line.
+            lastUsageInfo = FormatUsage(response.Usage);
+
             foreach (var message in response.Messages)
             {
-                ChatMessageWrappers.Add(new CodeEditor2.LLM.ChatMessageWrapper(message));
+                CodeEditor2.LLM.ChatMessageWrapper wrapper = new CodeEditor2.LLM.ChatMessageWrapper(message);
+                // Attach the usage info as an informational footer line and
+                // persist it in AdditionalProperties so it survives Save/Load.
+                // It is display-only and never becomes part of the message text.
+                if (lastUsageInfo != null)
+                {
+                    wrapper.InfoMessage = lastUsageInfo;
+                    wrapper.AdditionalProperties ??= new AdditionalPropertiesDictionary();
+                    wrapper.AdditionalProperties["infoMessage"] = lastUsageInfo;
+                }
+                ChatMessageWrappers.Add(wrapper);
             }
+        }
+
+        /// <summary>
+        /// Format an <see cref="UsageDetails"/> into a compact human-readable
+        /// string, e.g. "tokens: 1234 in / 567 out / 1801 total".
+        /// Returns null when no usage information is available.
+        /// </summary>
+        private static string? FormatUsage(UsageDetails? usage)
+        {
+            if (usage == null) return null;
+
+            long? input = usage.InputTokenCount;
+            long? output = usage.OutputTokenCount;
+            long? total = usage.TotalTokenCount;
+
+            if (input == null && output == null && total == null) return null;
+
+            StringBuilder sb = new StringBuilder("tokens:");
+            if (input != null) sb.Append(' ').Append(input.Value).Append(" in");
+            if (output != null) sb.Append(" / ").Append(output.Value).Append(" out");
+            if (total != null) sb.Append(" / ").Append(total.Value).Append(" total");
+            return sb.ToString();
         }
 
 
