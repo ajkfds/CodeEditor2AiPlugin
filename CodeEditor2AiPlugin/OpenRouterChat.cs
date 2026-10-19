@@ -325,14 +325,16 @@ namespace pluginAi
 
             long? input = usage.InputTokenCount;
             long? output = usage.OutputTokenCount;
+            long? cashed = usage.CachedInputTokenCount;
             long? total = usage.TotalTokenCount;
 
             if (input == null && output == null && total == null) return null;
 
             StringBuilder sb = new StringBuilder("tokens:");
             if (input != null) sb.Append(' ').Append(input.Value).Append(" in");
+            if (cashed != null) sb.Append(' ').Append(cashed.Value).Append(" cashed");
             if (output != null) sb.Append(" / ").Append(output.Value).Append(" out");
-            if (total != null) sb.Append(" / ").Append(total.Value).Append(" total");
+//            if (total != null) sb.Append(" / ").Append(total.Value).Append(" total");
             return sb.ToString();
         }
 
