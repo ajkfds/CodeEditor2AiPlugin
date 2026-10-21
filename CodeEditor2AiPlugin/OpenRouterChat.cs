@@ -21,19 +21,26 @@ namespace pluginAi
     public class OpenRouterChat : CodeEditor2.LLM.ILLMChatFrontEnd
     {
 
-        public OpenRouterChat(string modelName, bool enableFunctionCalling, bool includeReasoning = false)
+        public OpenRouterChat(string modelName, bool enableFunctionCalling,ReasoningEffort? reasoningEffort = null)
         {
             initialize(modelName, enableFunctionCalling);
             this.EnableFunctionCalling = enableFunctionCalling;
-            this.IncludeReasoning = includeReasoning;
+            this.ReasoningEffort = reasoningEffort;
         }
 
         private Microsoft.Extensions.AI.IChatClient client;
 
+        /// <summary>
+        /// Raised while a native (API) function-calling turn streams: once when
+        /// each tool call starts and once when it finishes. See
+        /// <see cref="CodeEditor2.LLM.ILLMChatFrontEnd.ToolCallNotification"/>.
+        /// </summary>
+        public event EventHandler<CodeEditor2.LLM.ToolCallNotificationEventArgs>? ToolCallNotification;
+
         public static string? ApiKey;
 
         public bool EnableFunctionCalling { get; }
-        public bool IncludeReasoning { get; set; }
+        public ReasoningEffort? ReasoningEffort { get; }
 
         /// <summary>
         /// OpenRouter provider routing の "only" に指定する provider slug (例: "gmicloud/fp8")。
@@ -55,7 +62,7 @@ namespace pluginAi
 
         /// <summary>
         /// Human-readable summary of the token usage of the most recent LLM
-        /// response (e.g. "tokens: 1234 in / 567 out / 1801 total").
+        /// response (e.g. "tokens: 1,234 in / 567 out / 1,801 total").
         /// null when the provider did not report usage.
         /// Display-only; never part of the message content sent to the LLM.
         /// </summary>
@@ -195,9 +202,9 @@ namespace pluginAi
         {
             ChatOptions options = new ChatOptions
             {
-                Temperature = 1.0f,
-                TopP = 0.95f,
-                Reasoning = new ReasoningOptions() { Effort = ReasoningEffort.Low }
+                //                Temperature = 1.0f, minmax3 , deepseek4.1 flash
+                //                TopP = 0.95f,, deepseek4.1 flash
+                Reasoning = new ReasoningOptions() { Effort = ReasoningEffort }
             };
             //ChatOptions options = new ChatOptions
             //{
@@ -211,12 +218,9 @@ namespace pluginAi
             {
                 options = new()
                 {
-                    Tools = tools
+                    Tools = tools,
+                Reasoning = new ReasoningOptions() { Effort = ReasoningEffort }
                 };
-            }
-            if (IncludeReasoning)
-            {
-                options.AdditionalProperties = new() { ["include_reasoning"] = true };
             }
             // OpenRouter provider routing は ProviderRoutingHandler が
             // リクエストボディに直接注入する (AdditionalProperties は
@@ -224,6 +228,11 @@ namespace pluginAi
             ChatMessageWrappers.Add(new(ChatRole.User, command));
 
             List<ChatResponseUpdate> updates = new List<ChatResponseUpdate>();
+
+            // Tool calls observed during this turn, keyed by CallId, so a started
+            // notification is raised exactly once per call (the streaming protocol
+            // may split one call across several updates).
+            HashSet<string> startedToolCallIds = new HashSet<string>();
 
             // Stream chunks to the caller immediately (no full buffering).
             // This keeps the ChatControl "waiting..." timer stoppable and makes
@@ -243,6 +252,14 @@ namespace pluginAi
                     // 条件で絞らず全件を蓄積する。
                     updates.Add(update);
 
+                    // Native (API) tool calls: surface the tool-call lifecycle as
+                    // notifications so the chat UI can render them (spinner while
+                    // running + result text + history) exactly like the pseudo
+                    // (message-based) tool calls. The tool loop itself runs inside
+                    // the MEAI function-invocation middleware; here we only observe
+                    // the FunctionCallContent / FunctionResultContent it emits.
+                    RaiseToolCallNotifications(update, startedToolCallIds);
+
                     // FinishReason が入っていれば通知
                     if (update.FinishReason.HasValue)
                     {
@@ -250,7 +267,13 @@ namespace pluginAi
 
                         if (reason == ChatFinishReason.ToolCalls)
                         {
-                            yield return "blank (Function Call requested)";
+                            // The function-invocation middleware continues the
+                            // turn after executing the tools and streams the final
+                            // answer afterwards, so do not emit a placeholder
+                            // "blank" line here: doing so would interleave a
+                            // spurious message between the tool call and its
+                            // answer. The tool call is displayed by the tool-call
+                            // notifications instead.
                         }
                         else if (reason == ChatFinishReason.ContentFilter)
                         {
@@ -279,6 +302,61 @@ namespace pluginAi
             {
                 // 履歴は正常終了・キャンセル・例外のどの経路でも反映する
                 addMessages(updates);
+            }
+        }
+
+        /// <summary>
+        /// Inspect a single streaming update for native (API) tool-call content
+        /// and raise <see cref="ToolCallNotification"/> accordingly:
+        /// <list type="bullet">
+        /// <item>a <see cref="FunctionCallContent"/> with a name (first time seen
+        /// for that call id) raises a "started" notification;</item>
+        /// <item>a <see cref="FunctionResultContent"/> raises a "finished"
+        /// notification carrying the tool result text.</item>
+        /// </list>
+        /// The MEAI function-invocation middleware re-streams both the assistant
+        /// tool-call message and the tool result message, so both content types
+        /// are observed here.
+        /// </summary>
+        private void RaiseToolCallNotifications(ChatResponseUpdate update, HashSet<string> startedToolCallIds)
+        {
+            EventHandler<CodeEditor2.LLM.ToolCallNotificationEventArgs>? handler = ToolCallNotification;
+            if (handler == null) return;
+
+            foreach (AIContent content in update.Contents)
+            {
+                switch (content)
+                {
+                    case FunctionCallContent call:
+                        {
+                            // The name may arrive incrementally; only fire once we
+                            // actually have it, and only once per call id.
+                            string callId = call.CallId ?? "";
+                            if (!string.IsNullOrEmpty(call.Name) && !startedToolCallIds.Contains(callId))
+                            {
+                                startedToolCallIds.Add(callId);
+                                handler(this, new CodeEditor2.LLM.ToolCallNotificationEventArgs(callId, call.Name, isStarting: true));
+                            }
+                        }
+                        break;
+
+                    case FunctionResultContent result:
+                        {
+                            string callId = result.CallId ?? "";
+                            // A tool result implies the tool call existed; make sure
+                            // the "started" side was not skipped (e.g. the provider
+                            // did not stream the name).
+                            if (!startedToolCallIds.Contains(callId))
+                            {
+                                startedToolCallIds.Add(callId);
+                                handler(this, new CodeEditor2.LLM.ToolCallNotificationEventArgs(callId, "", isStarting: true));
+                            }
+
+                            string resultText = result.Result?.ToString() ?? "";
+                            handler(this, new CodeEditor2.LLM.ToolCallNotificationEventArgs(callId, "", isStarting: false, result: resultText));
+                        }
+                        break;
+                }
             }
         }
 
@@ -316,7 +394,7 @@ namespace pluginAi
 
         /// <summary>
         /// Format an <see cref="UsageDetails"/> into a compact human-readable
-        /// string, e.g. "tokens: 1234 in / 567 out / 1801 total".
+        /// string, e.g. "tokens: 1,234 in / 567 out / 1,801 total".
         /// Returns null when no usage information is available.
         /// </summary>
         private static string? FormatUsage(UsageDetails? usage)
@@ -331,12 +409,21 @@ namespace pluginAi
             if (input == null && output == null && total == null) return null;
 
             StringBuilder sb = new StringBuilder("tokens:");
-            if (input != null) sb.Append(' ').Append(input.Value).Append(" in");
-            if (cashed != null) sb.Append(' ').Append(cashed.Value).Append(" cashed");
-            if (output != null) sb.Append(" / ").Append(output.Value).Append(" out");
-//            if (total != null) sb.Append(" / ").Append(total.Value).Append(" total");
+            if (input != null) sb.Append(' ').Append(FormatTokenCount(input.Value)).Append(" in");
+            if (cashed != null) sb.Append(' ').Append(FormatTokenCount(cashed.Value)).Append(" cashed");
+            if (output != null) sb.Append(" / ").Append(FormatTokenCount(output.Value)).Append(" out");
+//            if (total != null) sb.Append(" / ").Append(FormatTokenCount(total.Value)).Append(" total");
             return sb.ToString();
         }
+
+        /// <summary>
+        /// Formats a token count with 3-digit comma separators (invariant culture),
+        /// e.g. 1234567 -> "1,234,567".
+        /// The result is display-only and must not be culture-dependent
+        /// (the info line is saved/restored and compared as text).
+        /// </summary>
+        private static string FormatTokenCount(long value)
+            => value.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
 
 
 
