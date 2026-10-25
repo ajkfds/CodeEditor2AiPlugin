@@ -234,6 +234,11 @@ namespace pluginAi
             // may split one call across several updates).
             HashSet<string> startedToolCallIds = new HashSet<string>();
 
+            // Last invocation (arguments) text already reported for each tool
+            // call id. Arguments stream in incrementally, so a new "started"
+            // notification is only raised when the text actually changed.
+            Dictionary<string, string> toolCallInvocations = new Dictionary<string, string>();
+
             // Stream chunks to the caller immediately (no full buffering).
             // This keeps the ChatControl "waiting..." timer stoppable and makes
             // the Abort button effective: the cancellationToken is propagated to
@@ -258,7 +263,7 @@ namespace pluginAi
                     // (message-based) tool calls. The tool loop itself runs inside
                     // the MEAI function-invocation middleware; here we only observe
                     // the FunctionCallContent / FunctionResultContent it emits.
-                    RaiseToolCallNotifications(update, startedToolCallIds);
+                    RaiseToolCallNotifications(update, startedToolCallIds, toolCallInvocations);
 
                     // FinishReason が入っていれば通知
                     if (update.FinishReason.HasValue)
@@ -318,7 +323,10 @@ namespace pluginAi
         /// tool-call message and the tool result message, so both content types
         /// are observed here.
         /// </summary>
-        private void RaiseToolCallNotifications(ChatResponseUpdate update, HashSet<string> startedToolCallIds)
+        private void RaiseToolCallNotifications(
+            ChatResponseUpdate update,
+            HashSet<string> startedToolCallIds,
+            Dictionary<string, string> lastInvocations)
         {
             EventHandler<CodeEditor2.LLM.ToolCallNotificationEventArgs>? handler = ToolCallNotification;
             if (handler == null) return;
@@ -330,12 +338,29 @@ namespace pluginAi
                     case FunctionCallContent call:
                         {
                             // The name may arrive incrementally; only fire once we
-                            // actually have it, and only once per call id.
+                            // actually have it. The arguments also arrive
+                            // incrementally, so subsequent updates of the same
+                            // call re-raise the "started" notification with the
+                            // latest invocation text: the UI updates the existing
+                            // item instead of creating a new one, which makes the
+                            // tool call itself (not only its result) visible.
                             string callId = call.CallId ?? "";
-                            if (!string.IsNullOrEmpty(call.Name) && !startedToolCallIds.Contains(callId))
+                            if (!string.IsNullOrEmpty(call.Name))
                             {
-                                startedToolCallIds.Add(callId);
-                                handler(this, new CodeEditor2.LLM.ToolCallNotificationEventArgs(callId, call.Name, isStarting: true));
+                                string invocation = FormatInvocation(call);
+                                if (!startedToolCallIds.Contains(callId))
+                                {
+                                    startedToolCallIds.Add(callId);
+                                    lastInvocations[callId] = invocation;
+                                    handler(this, new CodeEditor2.LLM.ToolCallNotificationEventArgs(callId, call.Name, isStarting: true, result: null, invocation: invocation));
+                                }
+                                else if (invocation.Length > 0 && lastInvocations.TryGetValue(callId, out string? previous)
+                                         && previous != invocation)
+                                {
+                                    // Arguments grew since the last notification.
+                                    lastInvocations[callId] = invocation;
+                                    handler(this, new CodeEditor2.LLM.ToolCallNotificationEventArgs(callId, call.Name, isStarting: true, result: null, invocation: invocation));
+                                }
                             }
                         }
                         break;
@@ -357,6 +382,32 @@ namespace pluginAi
                         }
                         break;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Format the arguments of a streamed tool call for display in the chat
+        /// (pretty-printed JSON). Returns an empty string while the provider has
+        /// not streamed any argument yet.
+        /// </summary>
+        private static string FormatInvocation(FunctionCallContent call)
+        {
+            if (call.Arguments == null || call.Arguments.Count == 0) return "";
+
+            try
+            {
+                Dictionary<string, object?> plain = new Dictionary<string, object?>();
+                foreach (KeyValuePair<string, object?> pair in call.Arguments)
+                {
+                    plain[pair.Key] = pair.Value;
+                }
+                return JsonSerializer.Serialize(plain, new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch
+            {
+                // Fall back to a plain key/value listing when an argument value
+                // cannot be serialized (e.g. a non-JSON object).
+                return string.Join(", ", call.Arguments.Select(kv => kv.Key + "=" + (kv.Value?.ToString() ?? "null")));
             }
         }
 
