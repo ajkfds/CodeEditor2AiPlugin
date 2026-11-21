@@ -11,6 +11,12 @@ namespace pluginAi
 
         public bool Register()
         {
+            // Supply this plugin's navigate-node type (was a CreateNode()
+            // override on the data class, which forced the data layer to
+            // reference Avalonia).
+            CodeEditor2.NavigatePanel.NavigateNodeFactory.Register<Data.ChatLogFile>(
+                file => new NavigatePanel.ChatLogNode(file));
+
             // register filetypes
             {
                 FileTypes.ChatLogFile fileType = new FileTypes.ChatLogFile();

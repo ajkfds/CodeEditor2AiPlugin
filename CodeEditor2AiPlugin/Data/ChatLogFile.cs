@@ -26,10 +26,6 @@ namespace pluginAi.Data
             return Task.FromResult(chatLogFile);
         }
 
-        protected override CodeEditor2.NavigatePanel.NavigatePanelNode CreateNode()
-        {
-            NavigatePanel.ChatLogNode node = new NavigatePanel.ChatLogNode(this);
-            return node;
-        }
+
     }
 }
